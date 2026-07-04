@@ -188,7 +188,7 @@ function DesignPage() {
                 <Wrench className="h-3 w-3" /> Required parts
               </div>
               <ul className="flex flex-wrap gap-2">
-                {design.required_parts.map((p) => (
+                {(design.required_parts as string[]).map((p: string) => (
                   <li key={p} className="rounded-full border border-border bg-surface px-3 py-1 text-xs">
                     {p}
                   </li>

@@ -47,7 +47,7 @@ function SearchPage() {
     setText(v);
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
-      navigate({ search: (prev) => ({ ...prev, q: v }) });
+      navigate({ search: (prev: any) => ({ ...prev, q: v }) });
     }, 250);
   };
 
@@ -103,7 +103,7 @@ function ActiveFilterChips() {
           type="button"
           onClick={() =>
             navigate({
-              search: (prev) => ({
+              search: (prev: any) => ({
                 ...prev,
                 [a.key]: a.key === "sort" ? "newest" : "",
               }),
@@ -205,7 +205,7 @@ function FilterDrawer({ onClose }: { onClose: () => void }) {
   const { data: brands } = useSuspenseQuery(brandsQ);
 
   const set = (patch: Partial<z.infer<typeof searchSchema>>) =>
-    navigate({ search: (prev) => ({ ...prev, ...patch }) });
+    navigate({ search: (prev: any) => ({ ...prev, ...patch }) });
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-background/70 backdrop-blur md:items-center md:justify-center">
