@@ -14,13 +14,187 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      brands: {
+        Row: {
+          created_at: string
+          id: string
+          logo_path: string | null
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logo_path?: string | null
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logo_path?: string | null
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      designs: {
+        Row: {
+          brand_id: string | null
+          category_id: string | null
+          color: string | null
+          created_at: string
+          description: string | null
+          estimated_days: number | null
+          id: string
+          image_paths: string[]
+          is_featured: boolean
+          is_trending: boolean
+          model_id: string | null
+          price_max: number | null
+          price_min: number | null
+          required_parts: string[]
+          theme: string | null
+          thumbnail_path: string
+          title: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          brand_id?: string | null
+          category_id?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          estimated_days?: number | null
+          id?: string
+          image_paths?: string[]
+          is_featured?: boolean
+          is_trending?: boolean
+          model_id?: string | null
+          price_max?: number | null
+          price_min?: number | null
+          required_parts?: string[]
+          theme?: string | null
+          thumbnail_path: string
+          title: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          brand_id?: string | null
+          category_id?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          estimated_days?: number | null
+          id?: string
+          image_paths?: string[]
+          is_featured?: boolean
+          is_trending?: boolean
+          model_id?: string | null
+          price_max?: number | null
+          price_min?: number | null
+          required_parts?: string[]
+          theme?: string | null
+          thumbnail_path?: string
+          title?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "designs_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "designs_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      models: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "models_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never
