@@ -104,7 +104,7 @@ function Hero() {
             className="mt-6"
           >
             <SearchBar
-              size="lg"
+              variant="lg"
               placeholder="Search Duke wraps, matte black, hydro dip…"
               value={q}
               onChange={(e) => setQ(e.currentTarget.value)}

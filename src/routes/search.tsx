@@ -55,7 +55,7 @@ function SearchPage() {
     <AppShell>
       <div className="flex items-center gap-3">
         <SearchBar
-          size="lg"
+          variant="lg"
           autoFocus
           placeholder="Search designs, models, themes…"
           value={text}
