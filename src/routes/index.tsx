@@ -217,7 +217,7 @@ function BrandStrip() {
           <Link
             key={b.id}
             to="/search"
-            search={{ brand: b.slug }}
+            search={{ q: "", category: "", brand: b.slug, sort: "newest" }}
             className="flex min-w-[120px] items-center justify-center rounded-2xl border border-border bg-surface px-5 py-4 font-display text-sm font-semibold uppercase tracking-widest transition hover:neon-ring"
           >
             {b.name}

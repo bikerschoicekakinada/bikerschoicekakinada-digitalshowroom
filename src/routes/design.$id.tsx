@@ -112,7 +112,7 @@ function DesignPage() {
           </button>
           {gallery.length > 1 ? (
             <div className="mt-3 grid grid-cols-4 gap-2">
-              {gallery.slice(0, 8).map((p, i) => (
+              {gallery.slice(0, 8).map((p: string, i: number) => (
                 <button
                   key={p}
                   type="button"
