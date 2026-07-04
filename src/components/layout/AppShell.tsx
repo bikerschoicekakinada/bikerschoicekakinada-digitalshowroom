@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Compass, Heart, Home, Search, Shield, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
-import { BottomNav } from "./BottomNav";
+import { BottomNav } from "@/components/BottomNav";
 import { useOnlineStatus } from "@/hooks/use-favorites";
 import iconUrl from "/icons/icon-512.png?url";
 import { cn } from "@/lib/utils";
