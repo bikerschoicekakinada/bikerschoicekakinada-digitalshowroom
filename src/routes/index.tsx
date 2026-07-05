@@ -8,6 +8,7 @@ import { DesignCard, DesignCardSkeleton } from "@/components/DesignCard";
 import { SearchBar } from "@/components/SearchBar";
 import { EmptyState } from "@/components/EmptyState";
 import heroBike from "@/assets/hero-bike.jpg";
+import logoAsset from "@/assets/bikers-choice-logo.jpg.asset.json";
 import {
   listBrands,
   listCategories,
