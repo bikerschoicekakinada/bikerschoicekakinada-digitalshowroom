@@ -3,7 +3,7 @@ import { Compass, Heart, Home, Search, Shield, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { useOnlineStatus } from "@/hooks/use-favorites";
-import iconUrl from "/icons/icon-512.png?url";
+import logoAsset from "@/assets/bikers-choice-logo.jpg.asset.json";
 import { cn } from "@/lib/utils";
 
 const desktopNav = [
