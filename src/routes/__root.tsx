@@ -10,8 +10,9 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import "@fontsource/orbitron/500.css";
-import "@fontsource/orbitron/700.css";
+import "@fontsource/chakra-petch/500.css";
+import "@fontsource/chakra-petch/600.css";
+import "@fontsource/chakra-petch/700.css";
 import "@fontsource/rajdhani/500.css";
 import "@fontsource/rajdhani/600.css";
 import "@fontsource/inter/400.css";
