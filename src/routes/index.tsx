@@ -84,10 +84,22 @@ function Hero() {
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
       <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-end md:justify-between md:p-12">
         <div className="max-w-xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-neon/40 bg-neon/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-neon">
-            <Sparkles className="h-3 w-3" /> Digital Showroom
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0">
+              <div className="absolute -inset-1 rounded-full bg-neon/40 blur-md" aria-hidden />
+              <img
+                src={logoAsset.url}
+                alt="Bikers Choice Kakinada"
+                width={72}
+                height={72}
+                className="relative h-16 w-16 rounded-full object-cover ring-2 ring-neon md:h-20 md:w-20"
+              />
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-neon/40 bg-neon/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-neon">
+              <Sparkles className="h-3 w-3" /> Digital Showroom
+            </div>
           </div>
-          <h1 className="mt-4 font-display text-3xl font-bold leading-[1.05] md:text-5xl">
+          <h1 className="mt-5 font-display text-3xl font-bold leading-[1.05] md:text-5xl">
             Scan. <span className="neon-text">Explore.</span>{" "}
             <br className="hidden md:block" />
             Style your ride.
