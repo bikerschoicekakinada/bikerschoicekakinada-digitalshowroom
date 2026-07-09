@@ -49,13 +49,48 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const secured = await normalizeCatastrophicSsrResponse(response);
+      return addSecurityHeaders(request, secured);
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
+      const errRes = new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
       });
+      return addSecurityHeaders(request, errRes);
     }
   },
 };
+
+function addSecurityHeaders(request: Request, response: Response): Response {
+  const headers = new Headers(response.headers);
+
+  // Prevent MIME type sniffing
+  headers.set("X-Content-Type-Options", "nosniff");
+
+  // Prevent clickjacking
+  headers.set("X-Frame-Options", "DENY");
+
+  // Control referrer information
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  // Restrict browser features
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+  // HSTS (only in production)
+  if (process.env.NODE_ENV === "production") {
+    headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+
+  // Ensure admin routes are never indexed by crawlers (belt + suspenders with meta tag)
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/admin")) {
+    headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}

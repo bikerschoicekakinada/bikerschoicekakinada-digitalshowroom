@@ -3,7 +3,7 @@ import { Compass, Heart, Home, Search, Shield, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { useOnlineStatus } from "@/hooks/use-favorites";
-import logoAsset from "@/assets/bikers-choice-logo.jpg.asset.json";
+import logoImg from "@/assets/logo.jpeg";
 import { cn } from "@/lib/utils";
 
 const desktopNav = [
@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-8">
           <Link to="/" className="flex items-center gap-2.5">
             <img
-              src={logoAsset.url}
+              src={logoImg}
               width={36}
               height={36}
               alt=""

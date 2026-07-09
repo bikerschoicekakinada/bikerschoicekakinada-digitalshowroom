@@ -32,7 +32,7 @@ function BrandsPage() {
           <Link
             key={b.id}
             to="/search"
-            search={{ brand: b.slug }}
+            search={{ q: b.name }}
             className="flex h-28 items-center justify-center rounded-2xl surface-panel px-4 text-center font-display text-base font-semibold uppercase tracking-widest transition hover:-translate-y-0.5 hover:neon-ring"
           >
             {b.name}

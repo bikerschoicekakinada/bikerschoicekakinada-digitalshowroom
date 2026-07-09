@@ -4,11 +4,17 @@ const KEY = "bck.favorites.v1";
 type Listener = () => void;
 const listeners = new Set<Listener>();
 
+let cachedList: string[] = [];
+let lastRaw: string | null = null;
+
 function read(): string[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
+    if (raw === lastRaw) return cachedList;
+    lastRaw = raw;
+    cachedList = raw ? (JSON.parse(raw) as string[]) : [];
+    return cachedList;
   } catch {
     return [];
   }

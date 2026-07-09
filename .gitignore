@@ -16,6 +16,13 @@ dist-ssr
 .nitro
 *.local
 
+# Environment files (NEVER commit secrets)
+.env
+.env.local
+.env.production
+.env.*.local
+.env.development
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
@@ -30,3 +37,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch / temp files
+scratch_test.*
+supabase/.temp/
+.temp/
+.vinxi/
+.tanstack/

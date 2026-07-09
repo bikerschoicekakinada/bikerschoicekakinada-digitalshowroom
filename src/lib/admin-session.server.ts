@@ -12,10 +12,10 @@ export function adminSessionConfig() {
   return {
     password,
     name: "bck-admin",
-    maxAge: 60 * 60 * 12, // 12 hours
+    maxAge: 60 * 60 * 24, // 24 hours
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax" as const,
       path: "/",
     },
@@ -29,6 +29,12 @@ export async function getAdminSession() {
 export async function requireAdmin() {
   const session = await getAdminSession();
   if (!session.data.unlocked) {
+    throw new Error("Unauthorized");
+  }
+  const issuedAt = session.data.issuedAt ?? 0;
+  const now = Date.now();
+  if (now - issuedAt > 1000 * 60 * 60 * 24) {
+    await session.clear();
     throw new Error("Unauthorized");
   }
   return session;

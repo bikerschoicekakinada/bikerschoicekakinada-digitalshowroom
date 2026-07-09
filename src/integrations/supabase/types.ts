@@ -86,6 +86,10 @@ export type Database = {
           required_parts: string[]
           theme: string | null
           thumbnail_path: string
+          original_path: string | null
+          small_path: string | null
+          medium_path: string | null
+          large_path: string | null
           title: string
           updated_at: string
           view_count: number
@@ -107,6 +111,10 @@ export type Database = {
           required_parts?: string[]
           theme?: string | null
           thumbnail_path: string
+          original_path?: string | null
+          small_path?: string | null
+          medium_path?: string | null
+          large_path?: string | null
           title: string
           updated_at?: string
           view_count?: number
@@ -128,6 +136,10 @@ export type Database = {
           required_parts?: string[]
           theme?: string | null
           thumbnail_path?: string
+          original_path?: string | null
+          small_path?: string | null
+          medium_path?: string | null
+          large_path?: string | null
           title?: string
           updated_at?: string
           view_count?: number

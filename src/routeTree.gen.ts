@@ -14,6 +14,7 @@ import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as BrandsRouteImport } from './routes/brands'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ModelModelIdRouteImport } from './routes/model.$modelId'
 import { Route as DesignIdRouteImport } from './routes/design.$id'
 import { Route as CategorySlugRouteImport } from './routes/category.$slug'
 
@@ -42,6 +43,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModelModelIdRoute = ModelModelIdRouteImport.update({
+  id: '/model/$modelId',
+  path: '/model/$modelId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DesignIdRoute = DesignIdRouteImport.update({
   id: '/design/$id',
   path: '/design/$id',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/category/$slug': typeof CategorySlugRoute
   '/design/$id': typeof DesignIdRoute
+  '/model/$modelId': typeof ModelModelIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/category/$slug': typeof CategorySlugRoute
   '/design/$id': typeof DesignIdRoute
+  '/model/$modelId': typeof ModelModelIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/category/$slug': typeof CategorySlugRoute
   '/design/$id': typeof DesignIdRoute
+  '/model/$modelId': typeof ModelModelIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/category/$slug'
     | '/design/$id'
+    | '/model/$modelId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/category/$slug'
     | '/design/$id'
+    | '/model/$modelId'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/category/$slug'
     | '/design/$id'
+    | '/model/$modelId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   CategorySlugRoute: typeof CategorySlugRoute
   DesignIdRoute: typeof DesignIdRoute
+  ModelModelIdRoute: typeof ModelModelIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/model/$modelId': {
+      id: '/model/$modelId'
+      path: '/model/$modelId'
+      fullPath: '/model/$modelId'
+      preLoaderRoute: typeof ModelModelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/design/$id': {
       id: '/design/$id'
       path: '/design/$id'
@@ -183,7 +203,18 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   CategorySlugRoute: CategorySlugRoute,
   DesignIdRoute: DesignIdRoute,
+  ModelModelIdRoute: ModelModelIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
