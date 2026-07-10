@@ -59,7 +59,16 @@ import {
   adminOptimizeImage,
   adminReorderBrands,
 } from "@/lib/admin.functions";
-import { listBrands, listCategories, listModels, getImageOverrides, getConfiguratorData, type BrandRow, type CategoryRow, type ModelRow } from "@/lib/catalog.functions";
+import {
+  listBrands,
+  listCategories,
+  listModels,
+  getImageOverrides,
+  getConfiguratorData,
+  type BrandRow,
+  type CategoryRow,
+  type ModelRow,
+} from "@/lib/catalog.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
@@ -74,7 +83,10 @@ export const Route = createFileRoute("/admin")({
 });
 
 function slugify(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function formatRupees(n: number) {
@@ -87,8 +99,6 @@ async function computeHash(file: File): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-
-
 
 // ============================================================
 // Top-level: auth gate
@@ -185,12 +195,16 @@ function Dashboard() {
   const logout = useServerFn(adminLogout);
   const qc = useQueryClient();
   const stats = useServerFn(adminStats);
-  const statsQ = useQuery({ queryKey: ["admin", "stats"], queryFn: () => stats(), staleTime: 1000 * 30 });
+  const statsQ = useQuery({
+    queryKey: ["admin", "stats"],
+    queryFn: () => stats(),
+    staleTime: 1000 * 30,
+  });
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
-    { id: "upload",   label: "Upload",   icon: <Upload className="h-3.5 w-3.5" /> },
-    { id: "library",  label: "Library",  icon: <Tag className="h-3.5 w-3.5" /> },
-    { id: "images",   label: "Images",   icon: <ImageIcon2 className="h-3.5 w-3.5" /> },
+    { id: "upload", label: "Upload", icon: <Upload className="h-3.5 w-3.5" /> },
+    { id: "library", label: "Library", icon: <Tag className="h-3.5 w-3.5" /> },
+    { id: "images", label: "Images", icon: <ImageIcon2 className="h-3.5 w-3.5" /> },
     { id: "taxonomy", label: "Brands & Models", icon: <Plus className="h-3.5 w-3.5" /> },
     { id: "settings", label: "Settings", icon: <Settings className="h-3.5 w-3.5" /> },
   ];
@@ -199,8 +213,12 @@ function Dashboard() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">Shop Admin</div>
-          <h1 className="mt-1 font-display text-2xl font-bold uppercase tracking-wider md:text-3xl">Catalog Control</h1>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+            Shop Admin
+          </div>
+          <h1 className="mt-1 font-display text-2xl font-bold uppercase tracking-wider md:text-3xl">
+            Catalog Control
+          </h1>
         </div>
         <button
           onClick={async () => {
@@ -231,18 +249,21 @@ function Dashboard() {
             onClick={() => setTab(t.id)}
             className={cn(
               "shrink-0 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-widest transition",
-              tab === t.id ? "border-neon bg-neon/15 text-neon neon-ring" : "border-border text-muted-foreground hover:text-foreground"
+              tab === t.id
+                ? "border-neon bg-neon/15 text-neon neon-ring"
+                : "border-border text-muted-foreground hover:text-foreground",
             )}
           >
-            {t.icon}{t.label}
+            {t.icon}
+            {t.label}
           </button>
         ))}
       </div>
 
       <div className="mt-6">
-        {tab === "upload"   && <UploadTab />}
-        {tab === "library"  && <LibraryTab />}
-        {tab === "images"   && <ImagesTab />}
+        {tab === "upload" && <UploadTab />}
+        {tab === "library" && <LibraryTab />}
+        {tab === "images" && <ImagesTab />}
         {tab === "taxonomy" && <TaxonomyTab />}
         {tab === "settings" && <SettingsTab />}
       </div>
@@ -253,8 +274,12 @@ function Dashboard() {
 function StatTile({ label, value }: { label: string; value?: number }) {
   return (
     <div className="rounded-2xl surface-panel px-3 py-3">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">{label}</div>
-      <div className="mt-1 font-display text-xl font-bold neon-text">{value?.toLocaleString("en-IN") ?? "—"}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 font-display text-xl font-bold neon-text">
+        {value?.toLocaleString("en-IN") ?? "—"}
+      </div>
     </div>
   );
 }
@@ -267,7 +292,15 @@ type UploadQueueItem = {
   file: File;
   hash: string;
   size: number;
-  status: "pending" | "checking" | "duplicate" | "uploading" | "processing" | "optimizing" | "done" | "error";
+  status:
+    | "pending"
+    | "checking"
+    | "duplicate"
+    | "uploading"
+    | "processing"
+    | "optimizing"
+    | "done"
+    | "error";
   error?: string;
   existingDesign?: { id: string; thumbnail_path: string; title: string } | null;
   objectUrl: string;
@@ -281,7 +314,11 @@ function UploadTab() {
   const upsertFn = useServerFn(adminUpsertDesign);
   const optimizeFn = useServerFn(adminOptimizeImage);
 
-  const brands = useQuery({ queryKey: ["brands"], queryFn: () => listBrands(), staleTime: 1000 * 60 * 5 });
+  const brands = useQuery({
+    queryKey: ["brands"],
+    queryFn: () => listBrands(),
+    staleTime: 1000 * 60 * 5,
+  });
   const [brandId, setBrandId] = useState("");
   const [modelId, setModelId] = useState("");
   const [queue, setQueue] = useState<UploadQueueItem[]>([]);
@@ -350,9 +387,7 @@ function UploadTab() {
     if (!nextItem) return;
 
     // 1. Check duplicate
-    setQueue((prev) =>
-      prev.map((i) => (i.id === nextItem.id ? { ...i, status: "checking" } : i))
-    );
+    setQueue((prev) => prev.map((i) => (i.id === nextItem.id ? { ...i, status: "checking" } : i)));
 
     try {
       const existing = await checkDuplicateFn({
@@ -363,8 +398,8 @@ function UploadTab() {
         // Trigger Duplicate Resolution Dialog
         setQueue((prev) =>
           prev.map((i) =>
-            i.id === nextItem.id ? { ...i, status: "duplicate", existingDesign: existing } : i
-          )
+            i.id === nextItem.id ? { ...i, status: "duplicate", existingDesign: existing } : i,
+          ),
         );
         setCurrentDuplicate({ ...nextItem, status: "duplicate", existingDesign: existing });
       } else {
@@ -373,7 +408,11 @@ function UploadTab() {
       }
     } catch (err: any) {
       setQueue((prev) =>
-        prev.map((i) => ({ ...i, status: i.id === nextItem.id ? "error" : i.status, error: err.message }))
+        prev.map((i) => ({
+          ...i,
+          status: i.id === nextItem.id ? "error" : i.status,
+          error: err.message,
+        })),
       );
     }
   };
@@ -387,9 +426,7 @@ function UploadTab() {
 
   // Actual upload and database entry creation
   const performUpload = async (item: UploadQueueItem) => {
-    setQueue((prev) =>
-      prev.map((i) => (i.id === item.id ? { ...i, status: "uploading" } : i))
-    );
+    setQueue((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "uploading" } : i)));
 
     try {
       const base64 = await toBase64(item.file);
@@ -398,9 +435,7 @@ function UploadTab() {
       });
 
       // Update to processing
-      setQueue((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, status: "processing" } : i))
-      );
+      setQueue((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "processing" } : i)));
 
       const brand = brands.data?.find((b) => b.id === brandId);
       const model = models.data?.find((m) => m.id === modelId);
@@ -418,9 +453,7 @@ function UploadTab() {
       });
 
       // Update to optimizing
-      setQueue((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, status: "optimizing" } : i))
-      );
+      setQueue((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "optimizing" } : i)));
 
       // Trigger CDN optimization process
       await optimizeFn({
@@ -430,13 +463,11 @@ function UploadTab() {
         },
       });
 
-      setQueue((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, status: "done" } : i))
-      );
+      setQueue((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "done" } : i)));
       qc.invalidateQueries({ queryKey: ["admin"] });
     } catch (err: any) {
       setQueue((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, status: "error", error: err.message } : i))
+        prev.map((i) => (i.id === item.id ? { ...i, status: "error", error: err.message } : i)),
       );
     }
   };
@@ -445,7 +476,7 @@ function UploadTab() {
   const handleSkip = () => {
     if (!currentDuplicate) return;
     setQueue((prev) =>
-      prev.map((i) => (i.id === currentDuplicate.id ? { ...i, status: "done" } : i))
+      prev.map((i) => (i.id === currentDuplicate.id ? { ...i, status: "done" } : i)),
     );
     setCurrentDuplicate(null);
   };
@@ -464,9 +495,7 @@ function UploadTab() {
       });
 
       // Update to processing
-      setQueue((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, status: "processing" } : i))
-      );
+      setQueue((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "processing" } : i)));
 
       // Call replace function to update design row and delete old path from storage
       const designRow = await replaceImageFn({
@@ -479,9 +508,7 @@ function UploadTab() {
       });
 
       // Update to optimizing
-      setQueue((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, status: "optimizing" } : i))
-      );
+      setQueue((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "optimizing" } : i)));
 
       // Trigger CDN optimization process
       await optimizeFn({
@@ -495,7 +522,7 @@ function UploadTab() {
       qc.invalidateQueries({ queryKey: ["admin"] });
     } catch (err: any) {
       setQueue((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, status: "error", error: err.message } : i))
+        prev.map((i) => (i.id === item.id ? { ...i, status: "error", error: err.message } : i)),
       );
     }
   };
@@ -569,8 +596,8 @@ function UploadTab() {
             !modelId
               ? "border-border/30 bg-surface opacity-40 cursor-not-allowed"
               : isDragActive
-              ? "border-neon bg-neon/10 neon-ring"
-              : "border-neon/40 bg-neon/5 text-muted-foreground hover:neon-ring"
+                ? "border-neon bg-neon/10 neon-ring"
+                : "border-neon/40 bg-neon/5 text-muted-foreground hover:neon-ring",
           )}
         >
           <Upload className="h-5 w-5 text-neon" />
@@ -600,27 +627,39 @@ function UploadTab() {
                     item.status === "done"
                       ? "border-neon/40 bg-neon/5"
                       : item.status === "duplicate"
-                      ? "border-yellow-400 bg-yellow-400/5"
-                      : item.status === "error"
-                      ? "border-crimson/40 bg-crimson/5"
-                      : "border-border bg-surface"
+                        ? "border-yellow-400 bg-yellow-400/5"
+                        : item.status === "error"
+                          ? "border-crimson/40 bg-crimson/5"
+                          : "border-border bg-surface",
                   )}
                 >
-                  <img src={item.objectUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50 z-0" />
-                  
+                  <img
+                    src={item.objectUrl}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover opacity-50 z-0"
+                  />
+
                   {/* Status indicator badge */}
                   <div className="z-10 self-start">
                     {item.status === "checking" && (
-                      <span className="bg-yellow-400/20 text-yellow-400 text-[9px] px-1 py-0.5 rounded font-medium">Checking...</span>
+                      <span className="bg-yellow-400/20 text-yellow-400 text-[9px] px-1 py-0.5 rounded font-medium">
+                        Checking...
+                      </span>
                     )}
                     {item.status === "uploading" && (
-                      <span className="bg-neon/20 text-neon text-[9px] px-1 py-0.5 rounded font-medium animate-pulse">Uploading...</span>
+                      <span className="bg-neon/20 text-neon text-[9px] px-1 py-0.5 rounded font-medium animate-pulse">
+                        Uploading...
+                      </span>
                     )}
                     {item.status === "processing" && (
-                      <span className="bg-indigo-400/20 text-indigo-400 text-[9px] px-1 py-0.5 rounded font-medium animate-pulse">Processing Image...</span>
+                      <span className="bg-indigo-400/20 text-indigo-400 text-[9px] px-1 py-0.5 rounded font-medium animate-pulse">
+                        Processing Image...
+                      </span>
                     )}
                     {item.status === "optimizing" && (
-                      <span className="bg-cyan-400/20 text-cyan-400 text-[9px] px-1 py-0.5 rounded font-medium animate-pulse font-sans">Generating Optimized Versions...</span>
+                      <span className="bg-cyan-400/20 text-cyan-400 text-[9px] px-1 py-0.5 rounded font-medium animate-pulse font-sans">
+                        Generating Optimized Versions...
+                      </span>
                     )}
                     {item.status === "duplicate" && (
                       <span className="bg-yellow-400 text-black text-[9px] px-1 py-0.5 rounded font-bold uppercase flex items-center gap-0.5">
@@ -628,10 +667,14 @@ function UploadTab() {
                       </span>
                     )}
                     {item.status === "done" && (
-                      <span className="bg-neon text-black text-[9px] px-1 py-0.5 rounded font-bold">✓ Completed.</span>
+                      <span className="bg-neon text-black text-[9px] px-1 py-0.5 rounded font-bold">
+                        ✓ Completed.
+                      </span>
                     )}
                     {item.status === "error" && (
-                      <span className="bg-crimson text-white text-[9px] px-1 py-0.5 rounded font-bold">Error</span>
+                      <span className="bg-crimson text-white text-[9px] px-1 py-0.5 rounded font-bold">
+                        Error
+                      </span>
                     )}
                   </div>
 
@@ -642,7 +685,9 @@ function UploadTab() {
                   >
                     <X className="h-3 w-3" />
                   </button>
-                  <span className="z-10 text-[9px] text-muted-foreground truncate w-full self-end bg-background/70 px-1 py-0.5 rounded">{item.file.name}</span>
+                  <span className="z-10 text-[9px] text-muted-foreground truncate w-full self-end bg-background/70 px-1 py-0.5 rounded">
+                    {item.file.name}
+                  </span>
                 </div>
               ))}
             </div>
@@ -656,7 +701,9 @@ function UploadTab() {
           <div className="max-w-md w-full rounded-3xl surface-panel border border-yellow-400/30 p-6 space-y-4">
             <div className="flex items-center gap-2.5 text-yellow-400">
               <AlertTriangle className="h-6 w-6" />
-              <h3 className="font-display text-base font-bold uppercase tracking-wider">Image already exists</h3>
+              <h3 className="font-display text-base font-bold uppercase tracking-wider">
+                Image already exists
+              </h3>
             </div>
             <p className="text-xs text-muted-foreground">
               An identical image was found in this model library:
@@ -697,7 +744,11 @@ function LibraryTab() {
   const qc = useQueryClient();
   const upsertCat = useServerFn(adminUpsertCategory);
   const deleteCat = useServerFn(adminDeleteCategory);
-  const cats = useQuery({ queryKey: ["categories"], queryFn: () => listCategories(), staleTime: 1000 * 60 * 5 });
+  const cats = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => listCategories(),
+    staleTime: 1000 * 60 * 5,
+  });
   const [newCatName, setNewCatName] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -726,9 +777,19 @@ function LibraryTab() {
     <div className="space-y-4">
       {/* Create new category */}
       <div className="rounded-3xl surface-panel p-5">
-        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-neon">Category Library</h3>
-        <p className="mt-1 text-xs text-muted-foreground">Manage your custom configuration library and bike model linkings.</p>
-        <form className="mt-4 flex gap-2" onSubmit={(e) => { e.preventDefault(); handleCreateCat(); }}>
+        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-neon">
+          Category Library
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Manage your custom configuration library and bike model linkings.
+        </p>
+        <form
+          className="mt-4 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleCreateCat();
+          }}
+        >
           <input
             value={newCatName}
             onChange={(e) => setNewCatName(e.currentTarget.value)}
@@ -773,17 +834,37 @@ function LibraryTab() {
             expanded={expandedId === cat.id}
             onToggle={() => setExpandedId(expandedId === cat.id ? null : cat.id)}
             onDelete={async () => {
-              if (window.confirm(`Are you sure you want to delete "${cat.name}"? This removes all items inside too.`)) {
+              if (
+                window.confirm(
+                  `Are you sure you want to delete "${cat.name}"? This removes all items inside too.`,
+                )
+              ) {
                 await deleteCat({ data: { id: cat.id } });
                 inv();
               }
             }}
             onRename={async (name) => {
-              await upsertCat({ data: { id: cat.id, name, slug: slugify(name), sort_order: cat.sort_order, is_active: cat.is_active } });
+              await upsertCat({
+                data: {
+                  id: cat.id,
+                  name,
+                  slug: slugify(name),
+                  sort_order: cat.sort_order,
+                  is_active: cat.is_active,
+                },
+              });
               inv();
             }}
             onToggleActive={async () => {
-              await upsertCat({ data: { id: cat.id, name: cat.name, slug: cat.slug, sort_order: cat.sort_order, is_active: !cat.is_active } });
+              await upsertCat({
+                data: {
+                  id: cat.id,
+                  name: cat.name,
+                  slug: cat.slug,
+                  sort_order: cat.sort_order,
+                  is_active: !cat.is_active,
+                },
+              });
               inv();
             }}
           />
@@ -811,7 +892,7 @@ function CategoryLibraryCard({
   const qc = useQueryClient();
   const upsertItem = useServerFn(adminUpsertCategoryItem);
   const deleteItem = useServerFn(adminDeleteCategoryItem);
-  
+
   const itemsQ = useQuery({
     queryKey: ["admin-items", category.id],
     queryFn: () => adminListCategoryItems({ data: { category_id: category.id } }),
@@ -850,8 +931,17 @@ function CategoryLibraryCard({
     <div className="rounded-2xl surface-panel overflow-hidden">
       {/* Category header control bar */}
       <div className="flex items-center gap-3 p-4">
-        <button type="button" onClick={onToggle} className="flex-1 flex items-center gap-3 text-left">
-          <span className={cn("h-2 w-2 rounded-full shrink-0", category.is_active ? "bg-neon" : "bg-muted-foreground/40")} />
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex-1 flex items-center gap-3 text-left"
+        >
+          <span
+            className={cn(
+              "h-2 w-2 rounded-full shrink-0",
+              category.is_active ? "bg-neon" : "bg-muted-foreground/40",
+            )}
+          />
           {editingName ? (
             <input
               autoFocus
@@ -878,7 +968,7 @@ function CategoryLibraryCard({
             {itemsQ.data ? `${itemsQ.data.length} options` : ""}
           </span>
         </button>
-        
+
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -886,7 +976,11 @@ function CategoryLibraryCard({
             title={category.is_active ? "Disable" : "Enable"}
             className="grid h-8 w-8 place-items-center rounded-full border border-border text-muted-foreground hover:text-neon"
           >
-            {category.is_active ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            {category.is_active ? (
+              <Eye className="h-3.5 w-3.5" />
+            ) : (
+              <EyeOff className="h-3.5 w-3.5" />
+            )}
           </button>
           <button
             type="button"
@@ -918,7 +1012,6 @@ function CategoryLibraryCard({
       {/* Expanded subparts: Item list and inline model assignments */}
       {expanded && (
         <div className="border-t border-border/50 p-4 space-y-4">
-          
           {/* Options list inside category */}
           <div className="space-y-2">
             <Label>Options List</Label>
@@ -945,23 +1038,74 @@ function CategoryLibraryCard({
                   key={item.id}
                   item={item}
                   onToggleActive={async () => {
-                    await upsertItem({ data: { id: item.id, category_id: item.category_id, name: item.name, price: item.price, is_active: !item.is_active, is_recommended: item.is_recommended, sort_order: item.sort_order } });
+                    await upsertItem({
+                      data: {
+                        id: item.id,
+                        category_id: item.category_id,
+                        name: item.name,
+                        price: item.price,
+                        is_active: !item.is_active,
+                        is_recommended: item.is_recommended,
+                        sort_order: item.sort_order,
+                      },
+                    });
                     invItems();
                   }}
                   onToggleRecommended={async () => {
-                    await upsertItem({ data: { id: item.id, category_id: item.category_id, name: item.name, price: item.price, is_active: item.is_active, is_recommended: !item.is_recommended, sort_order: item.sort_order } });
+                    await upsertItem({
+                      data: {
+                        id: item.id,
+                        category_id: item.category_id,
+                        name: item.name,
+                        price: item.price,
+                        is_active: item.is_active,
+                        is_recommended: !item.is_recommended,
+                        sort_order: item.sort_order,
+                      },
+                    });
                     invItems();
                   }}
                   onEditPrice={async (price) => {
-                    await upsertItem({ data: { id: item.id, category_id: item.category_id, name: item.name, price, is_active: item.is_active, is_recommended: item.is_recommended, sort_order: item.sort_order } });
+                    await upsertItem({
+                      data: {
+                        id: item.id,
+                        category_id: item.category_id,
+                        name: item.name,
+                        price,
+                        is_active: item.is_active,
+                        is_recommended: item.is_recommended,
+                        sort_order: item.sort_order,
+                      },
+                    });
                     invItems();
                   }}
                   onEditName={async (name) => {
-                    await upsertItem({ data: { id: item.id, category_id: item.category_id, name, price: item.price, is_active: item.is_active, is_recommended: item.is_recommended, sort_order: item.sort_order } });
+                    await upsertItem({
+                      data: {
+                        id: item.id,
+                        category_id: item.category_id,
+                        name,
+                        price: item.price,
+                        is_active: item.is_active,
+                        is_recommended: item.is_recommended,
+                        sort_order: item.sort_order,
+                      },
+                    });
                     invItems();
                   }}
                   onEditMeta={async (desc, order) => {
-                    await upsertItem({ data: { id: item.id, category_id: item.category_id, name: item.name, price: item.price, description: desc, sort_order: order, is_active: item.is_active, is_recommended: item.is_recommended } });
+                    await upsertItem({
+                      data: {
+                        id: item.id,
+                        category_id: item.category_id,
+                        name: item.name,
+                        price: item.price,
+                        description: desc,
+                        sort_order: order,
+                        is_active: item.is_active,
+                        is_recommended: item.is_recommended,
+                      },
+                    });
                     invItems();
                   }}
                   onDelete={async () => {
@@ -973,8 +1117,16 @@ function CategoryLibraryCard({
             )}
 
             {/* Quick add option */}
-            <form className="flex flex-col gap-2 mt-3 p-3 bg-surface/30 rounded-xl border border-border/40" onSubmit={(e) => { e.preventDefault(); handleAddItem(); }}>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Add Option Item</span>
+            <form
+              className="flex flex-col gap-2 mt-3 p-3 bg-surface/30 rounded-xl border border-border/40"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAddItem();
+              }}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Add Option Item
+              </span>
               <div className="flex gap-2">
                 <input
                   value={newItemName}
@@ -1006,13 +1158,15 @@ function CategoryLibraryCard({
                   disabled={!newItemName.trim() || !newItemPrice || savingItem}
                   className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-neon text-black shadow-neon disabled:opacity-40"
                 >
-                  {savingItem ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  {savingItem ? (
+                    <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </form>
           </div>
-
-
         </div>
       )}
     </div>
@@ -1055,8 +1209,12 @@ function ItemRow({
   });
 
   return (
-    <div className={cn("flex flex-col gap-1.5 rounded-xl border px-3 py-2.5 transition bg-surface/50",
-      item.is_active ? "border-border" : "border-border/40 opacity-60")}>
+    <div
+      className={cn(
+        "flex flex-col gap-1.5 rounded-xl border px-3 py-2.5 transition bg-surface/50",
+        item.is_active ? "border-border" : "border-border/40 opacity-60",
+      )}
+    >
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
           {editingName ? (
@@ -1077,10 +1235,12 @@ function ItemRow({
               className="flex items-center gap-1.5 text-xs font-semibold hover:text-neon text-left"
             >
               {item.name}
-              {item.is_recommended && <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 shrink-0" />}
+              {item.is_recommended && (
+                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 shrink-0" />
+              )}
             </button>
           )}
-          
+
           <div className="flex items-center gap-2 mt-0.5">
             {editingPrice ? (
               <input
@@ -1096,13 +1256,19 @@ function ItemRow({
                 className="w-16 rounded border border-neon/50 bg-background px-1 text-[10px] outline-none"
               />
             ) : (
-              <button type="button" onClick={() => setEditingPrice(true)} className="text-[10px] text-neon hover:opacity-75 font-mono">
+              <button
+                type="button"
+                onClick={() => setEditingPrice(true)}
+                className="text-[10px] text-neon hover:opacity-75 font-mono"
+              >
                 {formatRupees(item.price)}
               </button>
             )}
-            
+
             {item.description && (
-              <span className="text-[10px] text-muted-foreground truncate">· {item.description}</span>
+              <span className="text-[10px] text-muted-foreground truncate">
+                · {item.description}
+              </span>
             )}
           </div>
         </div>
@@ -1120,7 +1286,9 @@ function ItemRow({
             onClick={onToggleRecommended}
             className={cn(
               "grid h-7 w-7 place-items-center rounded-full border transition",
-              item.is_recommended ? "border-yellow-400/50 bg-yellow-400/10 text-yellow-400" : "border-border text-muted-foreground hover:text-yellow-400"
+              item.is_recommended
+                ? "border-yellow-400/50 bg-yellow-400/10 text-yellow-400"
+                : "border-border text-muted-foreground hover:text-yellow-400",
             )}
           >
             <Star className="h-3 w-3" fill={item.is_recommended ? "currentColor" : "none"} />
@@ -1130,7 +1298,9 @@ function ItemRow({
             onClick={onToggleActive}
             className={cn(
               "grid h-7 w-7 place-items-center rounded-full border transition",
-              item.is_active ? "border-neon/40 bg-neon/10 text-neon" : "border-border text-muted-foreground hover:text-neon"
+              item.is_active
+                ? "border-neon/40 bg-neon/10 text-neon"
+                : "border-border text-muted-foreground hover:text-neon",
             )}
           >
             {item.is_active ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
@@ -1150,7 +1320,9 @@ function ItemRow({
         <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border/10">
           <div className="grid grid-cols-3 gap-2">
             <div className="col-span-2">
-              <label className="text-[8px] uppercase tracking-wider text-muted-foreground">Item Description</label>
+              <label className="text-[8px] uppercase tracking-wider text-muted-foreground">
+                Item Description
+              </label>
               <input
                 value={descVal}
                 onChange={(e) => setDescVal(e.target.value)}
@@ -1159,7 +1331,9 @@ function ItemRow({
               />
             </div>
             <div>
-              <label className="text-[8px] uppercase tracking-wider text-muted-foreground">Order Index</label>
+              <label className="text-[8px] uppercase tracking-wider text-muted-foreground">
+                Order Index
+              </label>
               <input
                 type="number"
                 value={orderVal}
@@ -1183,9 +1357,13 @@ function ItemRow({
           {/* Bike Assignments */}
           <div className="mt-3 flex items-center justify-between border-t border-border/20 pt-3">
             <div>
-              <div className="text-[8px] uppercase tracking-wider text-muted-foreground">Assigned Bikes</div>
+              <div className="text-[8px] uppercase tracking-wider text-muted-foreground">
+                Assigned Bikes
+              </div>
               <div className="mt-0.5 text-xs font-bold text-neon">
-                {assignmentsQ.isLoading ? "…" : `${assignmentsQ.data?.length ?? 0} model${(assignmentsQ.data?.length ?? 0) !== 1 ? "s" : ""}`}
+                {assignmentsQ.isLoading
+                  ? "…"
+                  : `${assignmentsQ.data?.length ?? 0} model${(assignmentsQ.data?.length ?? 0) !== 1 ? "s" : ""}`}
               </div>
             </div>
             <button
@@ -1228,7 +1406,10 @@ function ItemAssignmentsModal({
   const saveAssignmentsFn = useServerFn(adminSaveItemAssignments);
   const getAssignmentsFn = useServerFn(adminGetItemAssignments);
   const brandsQ = useQuery({ queryKey: ["brands"], queryFn: () => listBrands() });
-  const allModelsQ = useQuery({ queryKey: ["models-all"], queryFn: () => listModels({ data: {} }) });
+  const allModelsQ = useQuery({
+    queryKey: ["models-all"],
+    queryFn: () => listModels({ data: {} }),
+  });
 
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -1263,7 +1444,10 @@ function ItemAssignmentsModal({
         if (active) {
           clearTimeout(timer);
           setLoading(false);
-          setError(err?.message || "Failed to load bike assignments. Ensure database migrations are applied.");
+          setError(
+            err?.message ||
+              "Failed to load bike assignments. Ensure database migrations are applied.",
+          );
         }
       }
     };
@@ -1278,7 +1462,9 @@ function ItemAssignmentsModal({
 
   // Close on Escape + lock body scroll
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
@@ -1311,7 +1497,8 @@ function ItemAssignmentsModal({
   const grouped = useMemo(() => {
     const map = new Map<string, { brand: BrandRow | undefined; models: ModelRow[] }>();
     for (const m of filteredModels) {
-      if (!map.has(m.brand_id)) map.set(m.brand_id, { brand: brandMap.get(m.brand_id), models: [] });
+      if (!map.has(m.brand_id))
+        map.set(m.brand_id, { brand: brandMap.get(m.brand_id), models: [] });
       map.get(m.brand_id)!.models.push(m);
     }
     return Array.from(map.values()).sort(
@@ -1322,7 +1509,11 @@ function ItemAssignmentsModal({
   const toggle = (id: string) =>
     setCheckedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
 
@@ -1426,7 +1617,9 @@ function ItemAssignmentsModal({
           ) : loading || isQueriesLoading ? (
             <div className="flex flex-col items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-neon mb-2" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Loading bike models...</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                Loading bike models...
+              </span>
             </div>
           ) : filteredModels.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted-foreground">No bikes found</div>
@@ -1497,7 +1690,6 @@ function ItemAssignmentsModal({
   );
 }
 
-
 // ============================================================
 // Tab 3: Images (with View, Edit metadata, Replace, and Delete)
 // ============================================================
@@ -1517,7 +1709,9 @@ function ImagesTab() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterBrand, setFilterBrand] = useState("");
   const [filterModel, setFilterModel] = useState("");
-  const [sortBy, setSortBy] = useState<"recently_uploaded" | "recently_edited" | "sort_order">("recently_uploaded");
+  const [sortBy, setSortBy] = useState<"recently_uploaded" | "recently_edited" | "sort_order">(
+    "recently_uploaded",
+  );
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -1551,7 +1745,7 @@ function ImagesTab() {
   const [editTarget, setEditTarget] = useState<any | null>(null);
   const [configEditTarget, setConfigEditTarget] = useState<any | null>(null);
   const [replacingId, setReplacingId] = useState<string | null>(null);
-  
+
   // Modal state values
   const [desc, setDesc] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -1636,7 +1830,7 @@ function ImagesTab() {
   const grouped = useMemo(() => {
     const map = new Map<string, { label: string; images: any[] }>();
     const rows = (data?.rows ?? []) as any[];
-    
+
     // Track hash counts to identify duplicates across catalog
     const hashCounts: Record<string, number> = {};
     for (const img of rows) {
@@ -1648,11 +1842,13 @@ function ImagesTab() {
     for (const img of rows) {
       const key = img.model_id ?? "__none__";
       const designsCount = img.model?.designs?.[0]?.count ?? 0;
-      const countSuffix = img.model?.name ? ` (${designsCount} design${designsCount !== 1 ? "s" : ""})` : "";
+      const countSuffix = img.model?.name
+        ? ` (${designsCount} design${designsCount !== 1 ? "s" : ""})`
+        : "";
       const label = img.model?.name
         ? `${img.brand?.name ?? ""} ${img.model.name}${countSuffix}`.trim()
         : "No model";
-      
+
       const isDuplicateHash = img.file_hash ? (hashCounts[img.file_hash] ?? 0) > 1 : false;
 
       if (!map.has(key)) map.set(key, { label, images: [] });
@@ -1665,7 +1861,9 @@ function ImagesTab() {
     <div className="space-y-4 pb-20">
       {/* Search & Filters Controls */}
       <div className="grid gap-3 rounded-3xl surface-panel p-5">
-        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-neon">Search & Filter Library</h3>
+        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-neon">
+          Search & Filter Library
+        </h3>
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 items-end">
           {/* Search bar */}
           <div className="relative">
@@ -1691,7 +1889,9 @@ function ImagesTab() {
             >
               <option value="">All Brands</option>
               {(brands.data ?? []).map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
               ))}
             </select>
           </div>
@@ -1706,7 +1906,9 @@ function ImagesTab() {
             >
               <option value="">All Models</option>
               {(filterModels.data ?? []).map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
               ))}
             </select>
           </div>
@@ -1746,142 +1948,172 @@ function ImagesTab() {
         <>
           <div className="rounded-2xl surface-panel px-4 py-3 text-sm text-muted-foreground flex justify-between items-center">
             <span>{data?.count ?? 0} total matched images</span>
-            <span className="text-[10px] bg-neon/15 text-neon font-mono px-2 py-0.5 rounded">Grouped by Model</span>
+            <span className="text-[10px] bg-neon/15 text-neon font-mono px-2 py-0.5 rounded">
+              Grouped by Model
+            </span>
           </div>
 
-      {grouped.map(({ label, images }) => (
-        <div key={label} className="rounded-3xl surface-panel p-4">
-          <div className="mb-3 font-display text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
-            {images.map((img: any, imgIdx: number) => (
-              <div key={img.id} className="relative group overflow-hidden rounded-2xl border border-border/80 flex flex-col bg-background">
-                <div className="relative aspect-square w-full bg-surface-elevated/20">
-                  <SignedImage path={img.thumbnail_path} alt="" aspect="1/1" className="w-full h-full object-cover" />
-                  
-                  {/* Duplicate warning label */}
-                  {img.isDuplicateHash && (
-                    <span className="absolute top-1 left-1 bg-yellow-400 text-black text-[8px] px-1 py-0.5 rounded font-bold uppercase flex items-center gap-0.5 z-10">
-                      <AlertTriangle className="h-2 w-2" /> Duplicate
-                    </span>
-                  )}
-
-                  {/* Configuration Override Status Badge */}
-                  <div className="absolute top-1 right-1 z-10">
-                    {img.overrides && img.overrides.length > 0 ? (
-                      <span className="bg-yellow-400 text-black text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-md">
-                        🟡 Custom
-                      </span>
-                    ) : (
-                      <span className="bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-md">
-                        🟢 Default
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Replace indicator */}
-                  {replacingId === img.id && (
-                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
-                      <Loader2 className="h-5 w-5 animate-spin text-neon" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-2 flex flex-col gap-1 flex-1">
-                  <span className="text-[9px] font-mono text-muted-foreground flex justify-between items-center">
-                    <span>Order: {img.sort_order ?? 0}</span>
-                    <span>
-                      {img.overrides && img.overrides.length > 0 ? (
-                        <span className="text-[9px] text-yellow-400 font-semibold">Custom Config</span>
-                      ) : (
-                        <span className="text-[9px] text-emerald-400 font-semibold">Bike Default</span>
-                      )}
-                    </span>
-                  </span>
-                  {img.description && (
-                    <p className="text-[10px] text-muted-foreground line-clamp-2">{img.description}</p>
-                  )}
-                  {img.tags && img.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-0.5 mt-0.5">
-                      {img.tags.slice(0, 2).map((t: string) => (
-                        <span key={t} className="bg-neon/10 border border-neon/20 text-neon text-[8px] px-1 rounded truncate">#{t}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Operations panel */}
-                <div className="border-t border-border/50 p-1.5 flex flex-col gap-1 bg-surface-elevated/40 shrink-0">
-                  <div className="flex gap-1">
-                    <a
-                      href={`/model/${img.model_id}?img=${imgIdx}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 inline-flex justify-center items-center rounded-lg border border-border py-1 text-[9px] font-bold uppercase text-muted-foreground hover:text-neon bg-background text-center"
-                    >
-                      View
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => openEdit(img)}
-                      className="flex-1 inline-flex justify-center items-center rounded-lg border border-border py-1 text-[9px] font-bold uppercase text-muted-foreground hover:text-neon bg-background"
-                    >
-                      Edit Info
-                    </button>
-                  </div>
-                  
-                  <div className="flex gap-1 items-center">
-                    <button
-                      type="button"
-                      onClick={() => setConfigEditTarget(img)}
-                      className="flex-1 inline-flex justify-center items-center rounded-lg border border-border py-1 text-[9px] font-bold uppercase text-muted-foreground hover:text-neon bg-background"
-                    >
-                      Edit Config
-                    </button>
-                    
-                    <label className="flex-1 inline-flex justify-center items-center rounded-lg border border-border py-1 text-[9px] font-bold uppercase text-muted-foreground hover:text-neon bg-background cursor-pointer">
-                      Replace
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) handleReplaceImage(e.target.files[0], img.id);
-                        }}
-                      />
-                    </label>
-                    
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm("Delete this image permanent?")) remove.mutate(img.id);
-                      }}
-                      className="grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-border/80 text-muted-foreground hover:text-crimson bg-background"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
+          {grouped.map(({ label, images }) => (
+            <div key={label} className="rounded-3xl surface-panel p-4">
+              <div className="mb-3 font-display text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                {label}
               </div>
-            ))}
-          </div>
-        </div>
-      ))}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
+                {images.map((img: any, imgIdx: number) => (
+                  <div
+                    key={img.id}
+                    className="relative group overflow-hidden rounded-2xl border border-border/80 flex flex-col bg-background"
+                  >
+                    <div className="relative aspect-square w-full bg-surface-elevated/20">
+                      <SignedImage
+                        path={img.thumbnail_path}
+                        alt=""
+                        aspect="1/1"
+                        className="w-full h-full object-cover"
+                      />
 
-      {grouped.length === 0 && (
-        <p className="rounded-2xl surface-panel p-6 text-center text-sm text-muted-foreground">
-          No matching images found.
-        </p>
+                      {/* Duplicate warning label */}
+                      {img.isDuplicateHash && (
+                        <span className="absolute top-1 left-1 bg-yellow-400 text-black text-[8px] px-1 py-0.5 rounded font-bold uppercase flex items-center gap-0.5 z-10">
+                          <AlertTriangle className="h-2 w-2" /> Duplicate
+                        </span>
+                      )}
+
+                      {/* Configuration Override Status Badge */}
+                      <div className="absolute top-1 right-1 z-10">
+                        {img.overrides && img.overrides.length > 0 ? (
+                          <span className="bg-yellow-400 text-black text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-md">
+                            🟡 Custom
+                          </span>
+                        ) : (
+                          <span className="bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-md">
+                            🟢 Default
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Replace indicator */}
+                      {replacingId === img.id && (
+                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
+                          <Loader2 className="h-5 w-5 animate-spin text-neon" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-2 flex flex-col gap-1 flex-1">
+                      <span className="text-[9px] font-mono text-muted-foreground flex justify-between items-center">
+                        <span>Order: {img.sort_order ?? 0}</span>
+                        <span>
+                          {img.overrides && img.overrides.length > 0 ? (
+                            <span className="text-[9px] text-yellow-400 font-semibold">
+                              Custom Config
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-emerald-400 font-semibold">
+                              Bike Default
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      {img.description && (
+                        <p className="text-[10px] text-muted-foreground line-clamp-2">
+                          {img.description}
+                        </p>
+                      )}
+                      {img.tags && img.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-0.5 mt-0.5">
+                          {img.tags.slice(0, 2).map((t: string) => (
+                            <span
+                              key={t}
+                              className="bg-neon/10 border border-neon/20 text-neon text-[8px] px-1 rounded truncate"
+                            >
+                              #{t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Operations panel */}
+                    <div className="border-t border-border/50 p-1.5 flex flex-col gap-1 bg-surface-elevated/40 shrink-0">
+                      <div className="flex gap-1">
+                        <a
+                          href={`/model/${img.model_id}?img=${imgIdx}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 inline-flex justify-center items-center rounded-lg border border-border py-1 text-[9px] font-bold uppercase text-muted-foreground hover:text-neon bg-background text-center"
+                        >
+                          View
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(img)}
+                          className="flex-1 inline-flex justify-center items-center rounded-lg border border-border py-1 text-[9px] font-bold uppercase text-muted-foreground hover:text-neon bg-background"
+                        >
+                          Edit Info
+                        </button>
+                      </div>
+
+                      <div className="flex gap-1 items-center">
+                        <button
+                          type="button"
+                          onClick={() => setConfigEditTarget(img)}
+                          className="flex-1 inline-flex justify-center items-center rounded-lg border border-border py-1 text-[9px] font-bold uppercase text-muted-foreground hover:text-neon bg-background"
+                        >
+                          Edit Config
+                        </button>
+
+                        <label className="flex-1 inline-flex justify-center items-center rounded-lg border border-border py-1 text-[9px] font-bold uppercase text-muted-foreground hover:text-neon bg-background cursor-pointer">
+                          Replace
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              if (e.target.files?.[0])
+                                handleReplaceImage(e.target.files[0], img.id);
+                            }}
+                          />
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm("Delete this image permanent?"))
+                              remove.mutate(img.id);
+                          }}
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-border/80 text-muted-foreground hover:text-crimson bg-background"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {grouped.length === 0 && (
+            <p className="rounded-2xl surface-panel p-6 text-center text-sm text-muted-foreground">
+              No matching images found.
+            </p>
+          )}
+        </>
       )}
-    </>
-  )}
 
       {/* Slide Drawer/Modal for image metadata edit */}
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-background/85 backdrop-blur-sm md:items-center">
           <div className="max-w-md w-full rounded-t-3xl surface-panel border border-border p-6 space-y-4 md:rounded-3xl shadow-2xl">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-sm font-bold uppercase tracking-wider text-neon">Edit Image Info</h3>
-              <button onClick={() => setEditTarget(null)} className="grid h-8 w-8 place-items-center rounded-full border border-border">
+              <h3 className="font-display text-sm font-bold uppercase tracking-wider text-neon">
+                Edit Image Info
+              </h3>
+              <button
+                onClick={() => setEditTarget(null)}
+                className="grid h-8 w-8 place-items-center rounded-full border border-border"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1889,9 +2121,19 @@ function ImagesTab() {
             <div className="space-y-3">
               <div>
                 <Label>Update Brand tag</Label>
-                <Select value={selectedBrand} onChange={(v) => { setSelectedBrand(v); setSelectedModel(""); }}>
+                <Select
+                  value={selectedBrand}
+                  onChange={(v) => {
+                    setSelectedBrand(v);
+                    setSelectedModel("");
+                  }}
+                >
                   <option value="">Select brand…</option>
-                  {(brands.data ?? []).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  {(brands.data ?? []).map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
                 </Select>
               </div>
 
@@ -1899,7 +2141,11 @@ function ImagesTab() {
                 <Label>Update Model tag</Label>
                 <Select value={selectedModel} onChange={setSelectedModel} disabled={!selectedBrand}>
                   <option value="">Select model…</option>
-                  {(editModels.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  {(editModels.data ?? []).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
                 </Select>
               </div>
 
@@ -1962,7 +2208,7 @@ function TaxonomyTab() {
   const upsertBrand = useServerFn(adminUpsertBrand);
   const upsertModel = useServerFn(adminUpsertModel);
   const reorderBrands = useServerFn(adminReorderBrands);
-  
+
   const brands = useQuery({ queryKey: ["brands"], queryFn: () => listBrands() });
   const [newBrand, setNewBrand] = useState("");
   const [modelBrandId, setModelBrandId] = useState("");
@@ -2034,7 +2280,11 @@ function TaxonomyTab() {
               key={b.id}
               label={b.name}
               onMoveUp={index > 0 ? () => handleMoveBrand(index, "up") : undefined}
-              onMoveDown={index < (brands.data?.length ?? 0) - 1 ? () => handleMoveBrand(index, "down") : undefined}
+              onMoveDown={
+                index < (brands.data?.length ?? 0) - 1
+                  ? () => handleMoveBrand(index, "down")
+                  : undefined
+              }
             />
           ))}
         </ul>
@@ -2080,11 +2330,14 @@ function TaxonomyTab() {
             <Plus className="h-4 w-4" />
           </button>
         </div>
-        
+
         {modelBrandId && (
           <ul className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 max-h-60 overflow-y-auto scrollbar-thin">
             {(models.data ?? []).map((m: ModelRow & { designs_count?: number }) => (
-              <li key={m.id} className="flex justify-between items-center rounded-full border border-border bg-surface pl-3 pr-2 py-1 text-xs font-medium">
+              <li
+                key={m.id}
+                className="flex justify-between items-center rounded-full border border-border bg-surface pl-3 pr-2 py-1 text-xs font-medium"
+              >
                 <span className="truncate pr-1">{m.name}</span>
                 <span className="shrink-0 text-[9px] text-neon bg-neon/10 px-2 py-0.5 rounded-full font-bold">
                   {m.designs_count ?? 0}
@@ -2101,21 +2354,40 @@ function TaxonomyTab() {
 // ============================================================
 // UI Primitives
 // ============================================================
-function Card({ title, wide = false, children }: { title: string; wide?: boolean; children: React.ReactNode }) {
+function Card({
+  title,
+  wide = false,
+  children,
+}: {
+  title: string;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className={cn("rounded-3xl surface-panel p-5", wide && "md:col-span-2")}>
-      <h3 className="font-display text-sm font-bold uppercase tracking-widest text-neon">{title}</h3>
+      <h3 className="font-display text-sm font-bold uppercase tracking-widest text-neon">
+        {title}
+      </h3>
       <div className="mt-3">{children}</div>
     </div>
   );
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{children}</div>;
+  return (
+    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+      {children}
+    </div>
+  );
 }
 
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className="w-full rounded-2xl border border-border bg-surface px-4 py-2.5 text-sm outline-none focus:neon-ring" />;
+  return (
+    <input
+      {...props}
+      className="w-full rounded-2xl border border-border bg-surface px-4 py-2.5 text-sm outline-none focus:neon-ring"
+    />
+  );
 }
 
 function Select({
@@ -2258,7 +2530,9 @@ function SettingsTab() {
                 <AlertTriangle className="h-4 w-4" /> Danger Zone: Reset Catalog Data
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                Permanently clear the catalog database. All brands, models, category options, assignments, and uploaded images will be deleted. The admin account, DB schema, and storage bucket itself are protected.
+                Permanently clear the catalog database. All brands, models, category options,
+                assignments, and uploaded images will be deleted. The admin account, DB schema, and
+                storage bucket itself are protected.
               </p>
             </div>
             <button
@@ -2271,9 +2545,7 @@ function SettingsTab() {
         </div>
       </div>
 
-      {resetDialogOpen && (
-        <ResetCatalogModal onClose={() => setResetDialogOpen(false)} />
-      )}
+      {resetDialogOpen && <ResetCatalogModal onClose={() => setResetDialogOpen(false)} />}
     </div>
   );
 }
@@ -2326,7 +2598,7 @@ function ResetCatalogModal({ onClose }: { onClose: () => void }) {
     try {
       await resetCatalogFn({ data: { pin, confirmText } });
       setProgressIndex(steps.length); // Trigger "Reset Complete" state
-      
+
       // Delay slightly for visual feedback before refreshing
       setTimeout(() => {
         qc.clear(); // Clear React Query cache
@@ -2349,7 +2621,8 @@ function ResetCatalogModal({ onClose }: { onClose: () => void }) {
               <AlertTriangle className="h-5 w-5" /> Reset Catalog Data
             </h3>
             <p className="mt-4 text-sm text-foreground leading-relaxed">
-              This action will permanently delete all catalog data, uploaded images, bike models, categories, assignments and customer saved data. This action cannot be undone.
+              This action will permanently delete all catalog data, uploaded images, bike models,
+              categories, assignments and customer saved data. This action cannot be undone.
             </p>
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -2374,7 +2647,8 @@ function ResetCatalogModal({ onClose }: { onClose: () => void }) {
               <AlertTriangle className="h-5 w-5" /> Verification Required
             </h3>
             <p className="mt-3 text-xs text-muted-foreground">
-              To proceed, please type <strong className="text-foreground">RESET CATALOG</strong> below and re-enter your Admin PIN.
+              To proceed, please type <strong className="text-foreground">RESET CATALOG</strong>{" "}
+              below and re-enter your Admin PIN.
             </p>
 
             <div className="mt-4 space-y-4">
@@ -2405,11 +2679,7 @@ function ResetCatalogModal({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            {error && (
-              <p className="mt-3 text-xs text-red-400 font-medium">
-                ⚠️ {error}
-              </p>
-            )}
+            {error && <p className="mt-3 text-xs text-red-400 font-medium">⚠️ {error}</p>}
 
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -2435,7 +2705,7 @@ function ResetCatalogModal({ onClose }: { onClose: () => void }) {
             <h4 className="mt-4 font-display text-sm font-semibold uppercase tracking-wider text-foreground">
               {progressIndex < steps.length ? "Resetting Catalog" : "Reset Complete."}
             </h4>
-            
+
             <div className="mt-6 max-w-xs mx-auto space-y-1.5 text-left text-xs">
               {steps.map((text, idx) => {
                 const done = progressIndex > idx;
@@ -2445,7 +2715,11 @@ function ResetCatalogModal({ onClose }: { onClose: () => void }) {
                     key={text}
                     className={cn(
                       "flex items-center justify-between transition-opacity duration-300",
-                      done ? "text-muted-foreground opacity-60" : active ? "text-red-400 font-bold" : "text-muted-foreground/30"
+                      done
+                        ? "text-muted-foreground opacity-60"
+                        : active
+                          ? "text-red-400 font-bold"
+                          : "text-muted-foreground/30",
                     )}
                   >
                     <span>{text}</span>
@@ -2456,7 +2730,9 @@ function ResetCatalogModal({ onClose }: { onClose: () => void }) {
               <div
                 className={cn(
                   "flex items-center justify-between transition-opacity duration-300 mt-2 pt-2 border-t border-border/30",
-                  progressIndex === steps.length ? "text-neon font-bold" : "text-muted-foreground/30"
+                  progressIndex === steps.length
+                    ? "text-neon font-bold"
+                    : "text-muted-foreground/30",
                 )}
               >
                 <span>Reset Complete.</span>
@@ -2470,13 +2746,7 @@ function ResetCatalogModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function EditConfigurationOverlay({
-  design,
-  onClose,
-}: {
-  design: any;
-  onClose: () => void;
-}) {
+function EditConfigurationOverlay({ design, onClose }: { design: any; onClose: () => void }) {
   const qc = useQueryClient();
   const saveOverrides = useServerFn(adminSaveImageOverrides);
 
@@ -2581,7 +2851,7 @@ function EditConfigurationOverlay({
   const handleUpdateItem = (itemId: string, fields: any) => {
     setHasChanges(true);
     setLocalItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, ...fields } : item))
+      prev.map((item) => (item.id === itemId ? { ...item, ...fields } : item)),
     );
   };
 
@@ -2598,7 +2868,7 @@ function EditConfigurationOverlay({
           }
           return item;
         })
-        .filter(Boolean)
+        .filter(Boolean),
     );
   };
 
@@ -2640,7 +2910,8 @@ function EditConfigurationOverlay({
               is_added: false,
               price_override: item.price !== item.defaultPrice ? item.price : null,
               name_override: item.name !== item.defaultName ? item.name : null,
-              description_override: item.description !== item.defaultDescription ? item.description : null,
+              description_override:
+                item.description !== item.defaultDescription ? item.description : null,
               is_recommended: null,
               is_active: null,
             });
@@ -2744,7 +3015,12 @@ function EditConfigurationOverlay({
       ) : (
         <div className="flex-1 flex flex-col overflow-y-auto p-4 space-y-4 pb-40 max-w-3xl mx-auto w-full font-sans">
           <div className="rounded-2xl overflow-hidden border border-border bg-surface/30 p-2 max-w-md mx-auto w-full">
-            <SignedImage path={design.thumbnail_path} alt="" aspect="16/10" className="rounded-xl object-cover" />
+            <SignedImage
+              path={design.thumbnail_path}
+              alt=""
+              aspect="16/10"
+              className="rounded-xl object-cover"
+            />
           </div>
 
           <div className="space-y-3">
@@ -2753,7 +3029,10 @@ function EditConfigurationOverlay({
               const items = localItems.filter((i) => i.category_id === cat.id && !i.is_removed);
 
               return (
-                <div key={cat.id} className="overflow-hidden rounded-2xl border border-border bg-surface/50">
+                <div
+                  key={cat.id}
+                  className="overflow-hidden rounded-2xl border border-border bg-surface/50"
+                >
                   <button
                     type="button"
                     onClick={() => toggleCategoryOpen(cat.id)}
@@ -2795,14 +3074,18 @@ function EditConfigurationOverlay({
                                 type="text"
                                 placeholder="Item Name"
                                 value={item.name}
-                                onChange={(e) => handleUpdateItem(item.id, { name: e.target.value })}
+                                onChange={(e) =>
+                                  handleUpdateItem(item.id, { name: e.target.value })
+                                }
                                 className="w-full bg-transparent border-0 p-0 text-sm font-medium text-foreground focus:ring-1 focus:ring-neon rounded placeholder:text-muted-foreground/30 focus:outline-none"
                               />
                               <input
                                 type="text"
                                 placeholder="Description (optional)"
                                 value={item.description}
-                                onChange={(e) => handleUpdateItem(item.id, { description: e.target.value })}
+                                onChange={(e) =>
+                                  handleUpdateItem(item.id, { description: e.target.value })
+                                }
                                 className="w-full bg-transparent border-0 p-0 text-xs text-muted-foreground focus:ring-1 focus:ring-neon rounded mt-0.5 placeholder:text-muted-foreground/20 focus:outline-none"
                               />
                             </div>
@@ -2929,7 +3212,8 @@ function EditConfigurationOverlay({
               Reset Image Configuration
             </h3>
             <p className="text-xs text-foreground">
-              This will remove all edits made to this image and restore the Bike Model default configuration.
+              This will remove all edits made to this image and restore the Bike Model default
+              configuration.
             </p>
             <div className="flex gap-3 pt-2">
               <button

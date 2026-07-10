@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 // Iron-session helpers for the shop-owner admin PIN.
 // Server-only: filename ends in .server.ts so the client bundle can't import it.
 import { useSession } from "@tanstack/react-start/server";

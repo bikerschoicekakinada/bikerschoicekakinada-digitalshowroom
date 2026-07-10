@@ -150,17 +150,19 @@ export const listBrands = createServerFn({ method: "GET" }).handler(async () => 
   const supabase = getPublicServerClient();
   const { data, error } = await supabase
     .from("brands")
-    .select(`
+    .select(
+      `
       id,
       slug,
       name,
       logo_path,
       sort_order,
       designs(count)
-    `)
+    `,
+    )
     .order("sort_order", { ascending: true });
   if (error) throw error;
-  
+
   const mapped = (data ?? []).map((b: any) => ({
     id: b.id,
     slug: b.slug,
@@ -199,7 +201,9 @@ export const listModels = createServerFn({ method: "GET" })
  */
 export const searchModels = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
-    z.object({ q: z.string().default(""), limit: z.number().min(1).max(60).default(24) }).parse(d ?? {}),
+    z
+      .object({ q: z.string().default(""), limit: z.number().min(1).max(60).default(24) })
+      .parse(d ?? {}),
   )
   .handler(async ({ data }) => {
     const { getPublicServerClient } = await import("./supabase-public.server");
@@ -267,7 +271,11 @@ export const listImagesByModel = createServerFn({ method: "GET" })
 
     // Query ONLY minimal fields required for thumbnails rendering:
     // id, thumbnail_path, model_id, sort_order
-    const { data: rows, count, error } = await supabase
+    const {
+      data: rows,
+      count,
+      error,
+    } = await supabase
       .from("designs")
       .select("id,thumbnail_path,model_id,sort_order", { count: "exact" })
       .eq("model_id", data.modelId)
@@ -292,11 +300,34 @@ export const getImageDetail = createServerFn({ method: "GET" })
     const { getPublicServerClient } = await import("./supabase-public.server");
     const supabase = getPublicServerClient();
 
-    const selectStr = "id,title,brand_id,model_id,thumbnail_path,original_path,small_path,medium_path,large_path,sort_order,created_at,description,tags";
+    // 1. Try to query with full columns (in case migrations are fully applied)
+    try {
+      const { data: row, error } = await supabase
+        .from("designs")
+        .select(
+          "id,title,brand_id,model_id,thumbnail_path,original_path,small_path,medium_path,large_path,sort_order,created_at,description,tags",
+        )
+        .eq("id", data.designId)
+        .maybeSingle();
 
+      if (!error && row) {
+        const r = row as any;
+        return {
+          ...r,
+          original_path: r.original_path ?? null,
+          small_path: r.small_path ?? null,
+          medium_path: r.medium_path ?? null,
+          large_path: r.large_path ?? null,
+        };
+      }
+    } catch (e) {
+      console.warn("getImageDetail: failed full select, falling back to basic columns:", e);
+    }
+
+    // 2. Fallback to basic columns that are guaranteed to exist
     const { data: row, error } = await supabase
       .from("designs")
-      .select(selectStr)
+      .select("id,title,brand_id,model_id,thumbnail_path,sort_order,created_at,description,tags")
       .eq("id", data.designId)
       .maybeSingle();
 
@@ -306,10 +337,10 @@ export const getImageDetail = createServerFn({ method: "GET" })
     const r = row as any;
     return {
       ...r,
-      original_path: r.original_path ?? null,
-      small_path: r.small_path ?? null,
-      medium_path: r.medium_path ?? null,
-      large_path: r.large_path ?? null,
+      original_path: r.thumbnail_path,
+      small_path: r.thumbnail_path,
+      medium_path: r.thumbnail_path,
+      large_path: r.thumbnail_path,
     };
   });
 
@@ -350,7 +381,7 @@ export const getConfiguratorData = createServerFn({ method: "GET" })
         .from("category_items")
         .select(
           "id,category_id,name,price,description,is_active,is_recommended,sort_order,created_at," +
-          "category:categories(id,slug,name,icon,sort_order,is_active)",
+            "category:categories(id,slug,name,icon,sort_order,is_active)",
         )
         .in("id", itemIds)
         .eq("is_active", true);
@@ -482,7 +513,9 @@ export const getConfiguratorCategoryItems = createServerFn({ method: "GET" })
     // 2. Fetch items belonging to this category
     const { data: items, error: itemErr } = await (supabase as any)
       .from("category_items")
-      .select("id,category_id,name,price,description,is_active,is_recommended,sort_order,created_at")
+      .select(
+        "id,category_id,name,price,description,is_active,is_recommended,sort_order,created_at",
+      )
       .in("id", itemIds)
       .eq("category_id", data.categoryId)
       .eq("is_active", true)
@@ -561,7 +594,9 @@ export const getModel = createServerFn({ method: "GET" })
  * used on the homepage.
  */
 export const listRecentModelThumbnails = createServerFn({ method: "GET" })
-  .validator((d: unknown) => z.object({ limit: z.number().min(1).max(24).default(12) }).parse(d ?? {}))
+  .validator((d: unknown) =>
+    z.object({ limit: z.number().min(1).max(24).default(12) }).parse(d ?? {}),
+  )
   .handler(async ({ data }) => {
     const { getPublicServerClient } = await import("./supabase-public.server");
     const supabase = getPublicServerClient();
@@ -569,7 +604,9 @@ export const listRecentModelThumbnails = createServerFn({ method: "GET" })
     // Get the most recently uploaded images, deduplicated by model
     const { data: rows, error } = await supabase
       .from("designs")
-      .select("model_id,thumbnail_path,model:models(id,slug,name,brand_id,brand:brands(id,slug,name),designs(count))")
+      .select(
+        "model_id,thumbnail_path,model:models(id,slug,name,brand_id,brand:brands(id,slug,name),designs(count))",
+      )
       .not("model_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(data.limit * 3); // over-fetch to account for model dedup
@@ -657,7 +694,8 @@ export const getImageOverrides = createServerFn({ method: "GET" })
 
     const { data: rows, error } = await (supabase as any)
       .from("image_configuration_overrides")
-      .select(`
+      .select(
+        `
         *,
         item:category_items(
           id,
@@ -671,7 +709,8 @@ export const getImageOverrides = createServerFn({ method: "GET" })
           created_at,
           category:categories(id,slug,name,icon,sort_order,is_active)
         )
-      `)
+      `,
+      )
       .eq("design_id", data.designId);
     if (error) throw error;
 
@@ -684,7 +723,7 @@ export const getImageOverrides = createServerFn({ method: "GET" })
  */
 export function mergeConfiguratorData(
   defaultCategories: ConfiguratorCategoryRow[],
-  overrides: any[]
+  overrides: any[],
 ): ConfiguratorCategoryRow[] {
   // 1. Deep copy categories and items
   const catMap = new Map<string, ConfiguratorCategoryRow>();
@@ -716,10 +755,14 @@ export function mergeConfiguratorData(
 
     // Apply overrides to existing default item
     if (foundItem && !o.is_removed) {
-      if (o.price_override !== null && o.price_override !== undefined) foundItem.price = o.price_override;
-      if (o.name_override !== null && o.name_override !== undefined) foundItem.name = o.name_override;
-      if (o.description_override !== null && o.description_override !== undefined) foundItem.description = o.description_override;
-      if (o.is_recommended !== null && o.is_recommended !== undefined) foundItem.is_recommended = o.is_recommended;
+      if (o.price_override !== null && o.price_override !== undefined)
+        foundItem.price = o.price_override;
+      if (o.name_override !== null && o.name_override !== undefined)
+        foundItem.name = o.name_override;
+      if (o.description_override !== null && o.description_override !== undefined)
+        foundItem.description = o.description_override;
+      if (o.is_recommended !== null && o.is_recommended !== undefined)
+        foundItem.is_recommended = o.is_recommended;
       if (o.is_active !== null && o.is_active !== undefined) foundItem.is_active = o.is_active;
       if (o.sort_order !== null && o.sort_order !== undefined) foundItem.sort_order = o.sort_order;
     }
@@ -744,12 +787,26 @@ export function mergeConfiguratorData(
         const newItem: CategoryItemRow = {
           id: rawItem.id,
           category_id: rawItem.category_id,
-          name: o.name_override !== null && o.name_override !== undefined ? o.name_override : rawItem.name,
-          price: o.price_override !== null && o.price_override !== undefined ? o.price_override : rawItem.price,
-          description: o.description_override !== null && o.description_override !== undefined ? o.description_override : rawItem.description,
-          is_active: o.is_active !== null && o.is_active !== undefined ? o.is_active : rawItem.is_active,
-          is_recommended: o.is_recommended !== null && o.is_recommended !== undefined ? o.is_recommended : rawItem.is_recommended,
-          sort_order: o.sort_order !== null && o.sort_order !== undefined ? o.sort_order : rawItem.sort_order,
+          name:
+            o.name_override !== null && o.name_override !== undefined
+              ? o.name_override
+              : rawItem.name,
+          price:
+            o.price_override !== null && o.price_override !== undefined
+              ? o.price_override
+              : rawItem.price,
+          description:
+            o.description_override !== null && o.description_override !== undefined
+              ? o.description_override
+              : rawItem.description,
+          is_active:
+            o.is_active !== null && o.is_active !== undefined ? o.is_active : rawItem.is_active,
+          is_recommended:
+            o.is_recommended !== null && o.is_recommended !== undefined
+              ? o.is_recommended
+              : rawItem.is_recommended,
+          sort_order:
+            o.sort_order !== null && o.sort_order !== undefined ? o.sort_order : rawItem.sort_order,
           created_at: rawItem.created_at,
         };
 
@@ -781,3 +838,54 @@ export function mergeConfiguratorData(
       items: cat.items.sort((a, b) => a.sort_order - b.sort_order),
     }));
 }
+
+const shareConfigInput = z.object({
+  modelId: z.string().uuid(),
+  activeIdx: z.number().int().min(0),
+  selectedItemIds: z.array(z.string().uuid()),
+});
+
+export const createShareLink = createServerFn({ method: "POST" })
+  .validator((d: unknown) => shareConfigInput.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Generate a secure random alphanumeric token (10 chars)
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let token = "";
+    for (let i = 0; i < 10; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    // Insert the shared configuration record
+    const { error } = await (supabaseAdmin as any).from("shared_configurations").insert({
+      id: token,
+      model_id: data.modelId,
+      active_idx: data.activeIdx,
+      selected_item_ids: data.selectedItemIds,
+    });
+
+    if (error) {
+      console.error("[createShareLink] Database error:", error.message);
+      throw new Error("Failed to create shared link configuration.");
+    }
+
+    return { token };
+  });
+
+export const getSharedConfiguration = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ token: z.string().min(1).max(50) }).parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: config, error } = await (supabaseAdmin as any)
+      .from("shared_configurations")
+      .select("model_id, active_idx, selected_item_ids")
+      .eq("id", data.token)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[getSharedConfiguration] Database error:", error.message);
+      return null;
+    }
+    return config;
+  });

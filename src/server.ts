@@ -48,13 +48,16 @@ function validateEnv() {
   const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const SESSION_SECRET = process.env.SESSION_SECRET;
-  const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const SUPABASE_PUBLISHABLE_KEY =
+    process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   const missing: string[] = [];
   if (!SUPABASE_URL) missing.push("SUPABASE_URL / VITE_SUPABASE_URL");
   if (!SUPABASE_SERVICE_ROLE_KEY) missing.push("SUPABASE_SERVICE_ROLE_KEY");
-  if (!SESSION_SECRET || SESSION_SECRET.length < 32) missing.push("SESSION_SECRET (must be >= 32 chars)");
-  if (!SUPABASE_PUBLISHABLE_KEY) missing.push("SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PUBLISHABLE_KEY");
+  if (!SESSION_SECRET || SESSION_SECRET.length < 32)
+    missing.push("SESSION_SECRET (must be >= 32 chars)");
+  if (!SUPABASE_PUBLISHABLE_KEY)
+    missing.push("SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PUBLISHABLE_KEY");
 
   if (missing.length > 0) {
     const errMessage = `Server configuration error: Missing environment variable(s): ${missing.join(", ")}`;

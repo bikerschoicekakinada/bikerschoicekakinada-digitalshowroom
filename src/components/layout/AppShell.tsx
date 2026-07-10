@@ -13,7 +13,13 @@ const desktopNav = [
   { to: "/favorites", label: "Favorites", icon: Heart },
 ] as const;
 
-export function AppShell({ children, hideBottomNav }: { children: ReactNode; hideBottomNav?: boolean }) {
+export function AppShell({
+  children,
+  hideBottomNav,
+}: {
+  children: ReactNode;
+  hideBottomNav?: boolean;
+}) {
   const online = useOnlineStatus();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -34,8 +40,8 @@ export function AppShell({ children, hideBottomNav }: { children: ReactNode; hid
               <span className="font-display text-[11px] font-bold uppercase tracking-[0.25em] text-neon">
                 Bikers Choice
               </span>
-              <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                Kakinada · Catalog
+              <span className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+                Kakinada · Design Explorer
               </span>
             </div>
           </Link>

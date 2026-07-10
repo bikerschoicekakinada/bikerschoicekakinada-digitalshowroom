@@ -20,7 +20,6 @@ import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 
-
 function NotFoundComponent() {
   return (
     <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
@@ -28,7 +27,7 @@ function NotFoundComponent() {
         <div className="font-display text-6xl font-bold neon-text">404</div>
         <h1 className="mt-3 font-display text-xl font-semibold">Design not found</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          This page may have been moved. Head back to the catalog.
+          This page may have been moved. Head back to the Design Explorer.
         </p>
         <Link
           to="/"
@@ -50,7 +49,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
       <div className="max-w-md">
         <h1 className="font-display text-xl font-semibold">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Please retry — your connection may be weak.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Please retry — your connection may be weak.
+        </p>
         <div className="mt-6 flex justify-center gap-2">
           <button
             onClick={() => {
@@ -81,22 +82,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1",
       },
-      { title: "Bikers Choice Kakinada — Digital Catalog" },
+      { title: "Bikers Choice Kakinada — Design Explorer" },
       {
         name: "description",
         content:
-          "Scan · Explore · Choose. The premium digital showroom of Bikers Choice Kakinada — wraps, paint, hydro dipping, PPF, graphics, helmets, accessories and more.",
+          "Explore hundreds of bike customization ideas, compare designs, estimate costs, and plan your bike customization with Bikers Choice Kakinada.",
       },
       { name: "theme-color", content: "#050607" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "Bikers Choice" },
       { name: "author", content: "Bikers Choice Kakinada" },
-      { property: "og:title", content: "Bikers Choice Kakinada — Digital Catalog" },
+      { property: "og:title", content: "Bikers Choice Kakinada — Design Explorer" },
       {
         property: "og:description",
         content:
-          "The premium digital showroom of Bikers Choice Kakinada — wraps, paint, hydro dipping, PPF, graphics and more.",
+          "Explore hundreds of bike customization ideas, compare designs, estimate costs, and plan your bike customization with Bikers Choice Kakinada.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -11,9 +11,9 @@ const memo = new Map<string, { url: string; expires: number }>();
  */
 export function useSignedUrls(paths: string[]) {
   const sign = useServerFn(signImageUrls);
-  
+
   const serialized = paths.filter(Boolean).sort().join(",");
-  
+
   const key = useMemo(() => {
     return [...new Set(serialized.split(","))].filter(Boolean);
   }, [serialized]);

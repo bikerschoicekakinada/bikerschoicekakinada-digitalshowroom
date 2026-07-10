@@ -42,7 +42,7 @@ export const adminStatus = createServerFn({ method: "GET" }).handler(async () =>
   const unlocked = session.data.unlocked === true;
   const issuedAt = session.data.issuedAt ?? 0;
   const now = Date.now();
-  if (unlocked && (now - issuedAt > 1000 * 60 * 60 * 24)) {
+  if (unlocked && now - issuedAt > 1000 * 60 * 60 * 24) {
     await session.clear();
     return { unlocked: false };
   }
@@ -55,7 +55,10 @@ export const adminLogin = createServerFn({ method: "POST" })
     // Rate limit: max 5 login attempts per IP in 15 minutes (in-memory fast-pass rate limit)
     const ip = getClientIp();
     if (!rateLimit(`login:${ip}`, 10, 15 * 60 * 1000)) {
-      return { ok: false as const, reason: "Too many attempts from this IP. Please wait 15 minutes." };
+      return {
+        ok: false as const,
+        reason: "Too many attempts from this IP. Please wait 15 minutes.",
+      };
     }
 
     try {
@@ -85,7 +88,7 @@ export const adminLogin = createServerFn({ method: "POST" })
           const waitMinutes = Math.ceil((lockedUntil - now) / 1000 / 60);
           return {
             ok: false as const,
-            reason: `Too many failed attempts. Account locked. Please wait ${waitMinutes} minute(s).`
+            reason: `Too many failed attempts. Account locked. Please wait ${waitMinutes} minute(s).`,
           };
         }
       }
@@ -97,7 +100,7 @@ export const adminLogin = createServerFn({ method: "POST" })
 
       // Verify PIN using bcrypt
       const match = await bcrypt.compare(data.pin, settings.admin_pin_hash);
-      
+
       if (!match) {
         // Increment failed attempts and lock if >= 5
         const nextFailed = (settings.failed_attempts ?? 0) + 1;
@@ -110,14 +113,20 @@ export const adminLogin = createServerFn({ method: "POST" })
           .from("admin_settings")
           .update({
             failed_attempts: nextFailed,
-            locked_until: lockedUntil
+            locked_until: lockedUntil,
           })
           .eq("id", "00000000-0000-0000-0000-000000000001");
 
         if (nextFailed >= 5) {
-          return { ok: false as const, reason: "Too many failed attempts. Account locked for 15 minutes." };
+          return {
+            ok: false as const,
+            reason: "Too many failed attempts. Account locked for 15 minutes.",
+          };
         }
-        return { ok: false as const, reason: `Incorrect PIN. ${5 - nextFailed} attempt(s) remaining.` };
+        return {
+          ok: false as const,
+          reason: `Incorrect PIN. ${5 - nextFailed} attempt(s) remaining.`,
+        };
       }
 
       // Reset failed attempts on success
@@ -125,7 +134,7 @@ export const adminLogin = createServerFn({ method: "POST" })
         .from("admin_settings")
         .update({
           failed_attempts: 0,
-          locked_until: null
+          locked_until: null,
         })
         .eq("id", "00000000-0000-0000-0000-000000000001");
 
@@ -253,10 +262,12 @@ export const adminDeleteDesign = createServerFn({ method: "POST" })
 /** Check if an image with the same hash exists for the same model_id */
 export const adminCheckDuplicate = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({
-      model_id: z.string().uuid(),
-      file_hash: z.string().min(1),
-    }).parse(d),
+    z
+      .object({
+        model_id: z.string().uuid(),
+        file_hash: z.string().min(1),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("./admin-session.server");
@@ -276,14 +287,16 @@ export const adminCheckDuplicate = createServerFn({ method: "POST" })
 /** Edit metadata for a design (image row) */
 export const adminUpdateDesignMeta = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({
-      id: z.string().uuid(),
-      brand_id: z.string().uuid().nullable().optional(),
-      model_id: z.string().uuid().nullable().optional(),
-      description: z.string().nullable().optional(),
-      tags: z.array(z.string()).default([]),
-      sort_order: z.number().int().default(0),
-    }).parse(d),
+    z
+      .object({
+        id: z.string().uuid(),
+        brand_id: z.string().uuid().nullable().optional(),
+        model_id: z.string().uuid().nullable().optional(),
+        description: z.string().nullable().optional(),
+        tags: z.array(z.string()).default([]),
+        sort_order: z.number().int().default(0),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("./admin-session.server");
@@ -308,12 +321,14 @@ export const adminUpdateDesignMeta = createServerFn({ method: "POST" })
 /** Replace an image on a design row with a new file path (and clean up old storage path) */
 export const adminReplaceDesignImage = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({
-      id: z.string().uuid(),
-      new_thumbnail_path: z.string().min(1),
-      file_hash: z.string().nullable().optional(),
-      file_size: z.number().int().nullable().optional(),
-    }).parse(d),
+    z
+      .object({
+        id: z.string().uuid(),
+        new_thumbnail_path: z.string().min(1),
+        file_hash: z.string().nullable().optional(),
+        file_size: z.number().int().nullable().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("./admin-session.server");
@@ -363,15 +378,25 @@ function validateImageSignature(bytes: Uint8Array, mimeType: string): boolean {
   // WebP: RIFF (bytes 0-3) and WEBP (bytes 8-11)
   if (mimeType === "image/webp") {
     return (
-      bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && // RIFF
-      bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50  // WEBP
+      bytes[0] === 0x52 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 &&
+      bytes[3] === 0x46 && // RIFF
+      bytes[8] === 0x57 &&
+      bytes[9] === 0x45 &&
+      bytes[10] === 0x42 &&
+      bytes[11] === 0x50 // WEBP
     );
   }
   // GIF: GIF87a or GIF89a
   if (mimeType === "image/gif") {
     return (
-      bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && // GIF
-      bytes[3] === 0x38 && (bytes[4] === 0x37 || bytes[4] === 0x39) && bytes[5] === 0x61 // 87a or 89a
+      bytes[0] === 0x47 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 && // GIF
+      bytes[3] === 0x38 &&
+      (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+      bytes[5] === 0x61 // 87a or 89a
     );
   }
   // SVG: Starts with XML header or '<svg'
@@ -403,7 +428,14 @@ export const adminUploadImage = createServerFn({ method: "POST" })
     await requireAdmin();
 
     // 1. Validate MIME type against whitelist
-    const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+    const allowedMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+      "image/svg+xml",
+    ];
     const mime = data.contentType.toLowerCase().trim();
     if (!allowedMimes.includes(mime)) {
       throw new Error("Invalid file type. Only JPEG, PNG, WebP, GIF, and SVG images are allowed.");
@@ -424,7 +456,9 @@ export const adminUploadImage = createServerFn({ method: "POST" })
 
     // 3. Verify file signature / magic numbers
     if (!validateImageSignature(bytes, mime)) {
-      throw new Error("Security verification failed. File contents do not match the expected image signature.");
+      throw new Error(
+        "Security verification failed. File contents do not match the expected image signature.",
+      );
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -436,7 +470,7 @@ export const adminUploadImage = createServerFn({ method: "POST" })
       "image/png": ".png",
       "image/webp": ".webp",
       "image/gif": ".gif",
-      "image/svg+xml": ".svg"
+      "image/svg+xml": ".svg",
     };
     const safeExt = extMap[mime] || ".jpg";
     const cleanBase = data.filename
@@ -537,11 +571,7 @@ export const adminUpsertCategoryItem = createServerFn({ method: "POST" })
       if (error) throw error;
       return row;
     }
-    const { data: row, error } = await db
-      .from("category_items")
-      .insert(data)
-      .select()
-      .single();
+    const { data: row, error } = await db.from("category_items").insert(data).select().single();
     if (error) throw error;
     return row;
   });
@@ -552,7 +582,10 @@ export const adminDeleteCategoryItem = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin-session.server");
     await requireAdmin();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await (supabaseAdmin as any).from("category_items").delete().eq("id", data.id);
+    const { error } = await (supabaseAdmin as any)
+      .from("category_items")
+      .delete()
+      .eq("id", data.id);
     if (error) throw error;
     return { ok: true as const };
   });
@@ -615,10 +648,7 @@ export const adminSaveItemAssignments = createServerFn({ method: "POST" })
     const db = supabaseAdmin as any;
 
     // Delete all existing assignments for this item
-    await db
-      .from("category_item_model_assignments")
-      .delete()
-      .eq("item_id", data.item_id);
+    await db.from("category_item_model_assignments").delete().eq("item_id", data.item_id);
 
     // Insert new assignments (if any)
     if (data.model_ids.length > 0) {
@@ -631,7 +661,6 @@ export const adminSaveItemAssignments = createServerFn({ method: "POST" })
     }
     return { ok: true as const };
   });
-
 
 /** Get category items with counts for a category (admin use) */
 export const adminListCategoryItems = createServerFn({ method: "GET" })
@@ -660,7 +689,9 @@ export const adminListImages = createServerFn({ method: "GET" })
         search: z.string().optional(),
         brandId: z.string().uuid().optional().nullable(),
         modelId: z.string().uuid().optional().nullable(),
-        sortBy: z.enum(["recently_uploaded", "recently_edited", "sort_order"]).default("recently_uploaded"),
+        sortBy: z
+          .enum(["recently_uploaded", "recently_edited", "sort_order"])
+          .default("recently_uploaded"),
       })
       .parse(d ?? {}),
   )
@@ -687,10 +718,14 @@ export const adminListImages = createServerFn({ method: "GET" })
       if (matchedM) matchingModelIds = matchedM.map((m) => m.id);
     }
 
-    const selectStrAll = "id,title,thumbnail_path,image_paths,original_path,small_path,medium_path,large_path,sort_order,created_at,updated_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count)),overrides:image_configuration_overrides(id)";
-    const selectStrNoOverrides = "id,title,thumbnail_path,image_paths,original_path,small_path,medium_path,large_path,sort_order,created_at,updated_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count))";
-    const selectStrSafeAll = "id,title,thumbnail_path,image_paths,sort_order,created_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count)),overrides:image_configuration_overrides(id)";
-    const selectStrSafeNoOverrides = "id,title,thumbnail_path,image_paths,sort_order,created_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count))";
+    const selectStrAll =
+      "id,title,thumbnail_path,image_paths,original_path,small_path,medium_path,large_path,sort_order,created_at,updated_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count)),overrides:image_configuration_overrides(id)";
+    const selectStrNoOverrides =
+      "id,title,thumbnail_path,image_paths,original_path,small_path,medium_path,large_path,sort_order,created_at,updated_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count))";
+    const selectStrSafeAll =
+      "id,title,thumbnail_path,image_paths,sort_order,created_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count)),overrides:image_configuration_overrides(id)";
+    const selectStrSafeNoOverrides =
+      "id,title,thumbnail_path,image_paths,sort_order,created_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count))";
 
     const executeQuery = async (columnsStr: string) => {
       let q = supabaseAdmin.from("designs").select(columnsStr, { count: "exact" });
@@ -704,10 +739,7 @@ export const adminListImages = createServerFn({ method: "GET" })
 
       if (data.search && data.search.trim()) {
         const clean = data.search.trim();
-        const orConditions: string[] = [
-          `title.ilike.%${clean}%`,
-          `description.ilike.%${clean}%`
-        ];
+        const orConditions: string[] = [`title.ilike.%${clean}%`, `description.ilike.%${clean}%`];
         if (matchingBrandIds.length > 0) {
           orConditions.push(`brand_id.in.(${matchingBrandIds.join(",")})`);
         }
@@ -730,19 +762,25 @@ export const adminListImages = createServerFn({ method: "GET" })
     };
 
     let result = await executeQuery(selectStrAll);
-    
+
     if (result.error) {
       console.warn("[adminListImages] Query 1 failed, trying without overrides:", result.error);
       result = await executeQuery(selectStrNoOverrides);
-      
+
       if (result.error) {
-        console.warn("[adminListImages] Query 2 failed, trying safe columns + overrides:", result.error);
+        console.warn(
+          "[adminListImages] Query 2 failed, trying safe columns + overrides:",
+          result.error,
+        );
         result = await executeQuery(selectStrSafeAll);
-        
+
         if (result.error) {
-          console.warn("[adminListImages] Query 3 failed, trying safe columns (no overrides):", result.error);
+          console.warn(
+            "[adminListImages] Query 3 failed, trying safe columns (no overrides):",
+            result.error,
+          );
           result = await executeQuery(selectStrSafeNoOverrides);
-          
+
           if (result.error) {
             throw result.error;
           }
@@ -889,7 +927,7 @@ export const adminResetCatalog = createServerFn({ method: "POST" })
       const { data: files, error: listError } = await supabaseAdmin.storage
         .from("catalog")
         .list("designs", { limit: 1000 });
-      
+
       if (listError) throw listError;
 
       if (files && files.length > 0) {
@@ -905,7 +943,9 @@ export const adminResetCatalog = createServerFn({ method: "POST" })
 
     // Log event with Date, Time and Admin User info
     const now = new Date();
-    console.log(`[CATALOG_RESET] Catalog cleared at ${now.toISOString()} by authenticated Admin user.`);
+    console.log(
+      `[CATALOG_RESET] Catalog cleared at ${now.toISOString()} by authenticated Admin user.`,
+    );
 
     return { success: true };
   });
@@ -936,7 +976,7 @@ export const adminSaveImageOverrides = createServerFn({ method: "POST" })
                 category_id: z.string().uuid(),
               })
               .optional(),
-          })
+          }),
         ),
       })
       .parse(d),
@@ -1009,7 +1049,6 @@ export const adminSaveImageOverrides = createServerFn({ method: "POST" })
     return { success: true };
   });
 
-
 export const adminListAllCatalogItems = createServerFn({ method: "GET" }).handler(async () => {
   const { requireAdmin } = await import("./admin-session.server");
   await requireAdmin();
@@ -1018,7 +1057,8 @@ export const adminListAllCatalogItems = createServerFn({ method: "GET" }).handle
   // Fetch all categories and their items
   const { data: rows, error } = await (supabaseAdmin as any)
     .from("categories")
-    .select(`
+    .select(
+      `
       id,
       name,
       slug,
@@ -1036,7 +1076,8 @@ export const adminListAllCatalogItems = createServerFn({ method: "GET" }).handle
         sort_order,
         created_at
       )
-    `)
+    `,
+    )
     .order("sort_order", { ascending: true });
   if (error) throw error;
   return rows ?? [];
@@ -1084,13 +1125,18 @@ export const adminOptimizeImage = createServerFn({ method: "POST" })
           });
 
         if (signErr || !signed?.signedUrl) {
-          console.warn(`[IMAGE_OPTIMIZATION] Signed URL transform failed for size ${size.name}:`, signErr);
+          console.warn(
+            `[IMAGE_OPTIMIZATION] Signed URL transform failed for size ${size.name}:`,
+            signErr,
+          );
           continue;
         }
 
         const imgRes = await fetch(signed.signedUrl);
         if (!imgRes.ok) {
-          console.warn(`[IMAGE_OPTIMIZATION] Fetch transformed image failed for size ${size.name}: status ${imgRes.status}`);
+          console.warn(
+            `[IMAGE_OPTIMIZATION] Fetch transformed image failed for size ${size.name}: status ${imgRes.status}`,
+          );
           continue;
         }
 
@@ -1106,7 +1152,10 @@ export const adminOptimizeImage = createServerFn({ method: "POST" })
           });
 
         if (uploadErr) {
-          console.warn(`[IMAGE_OPTIMIZATION] Upload optimized size ${size.name} failed:`, uploadErr);
+          console.warn(
+            `[IMAGE_OPTIMIZATION] Upload optimized size ${size.name} failed:`,
+            uploadErr,
+          );
           continue;
         }
 
@@ -1141,9 +1190,11 @@ export const adminReorderBrands = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const promises = orderedIds.map((id, index) =>
-      supabaseAdmin.from("brands").update({ sort_order: index + 1 }).eq("id", id)
+      supabaseAdmin
+        .from("brands")
+        .update({ sort_order: index + 1 })
+        .eq("id", id),
     );
     await Promise.all(promises);
     return { success: true };
   });
-

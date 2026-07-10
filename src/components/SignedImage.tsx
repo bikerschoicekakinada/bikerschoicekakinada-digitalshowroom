@@ -38,10 +38,7 @@ export const SignedImage = memo(function SignedImage({
 
   return (
     <div
-      className={cn(
-        "relative overflow-hidden bg-surface",
-        className,
-      )}
+      className={cn("relative overflow-hidden bg-surface", className)}
       style={{ aspectRatio: aspect }}
     >
       <div
@@ -87,4 +84,3 @@ export const SignedImage = memo(function SignedImage({
     </div>
   );
 });
-

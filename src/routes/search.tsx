@@ -20,7 +20,11 @@ export const Route = createFileRoute("/search")({
   head: () => ({
     meta: [
       { title: "Search Bike Models — Bikers Choice Kakinada" },
-      { name: "description", content: "Search for your bike model and explore customization options at Bikers Choice Kakinada." },
+      {
+        name: "description",
+        content:
+          "Search for your bike model and explore customization options at Bikers Choice Kakinada.",
+      },
     ],
   }),
 });
@@ -68,21 +72,29 @@ function SearchPage() {
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-neon/10 text-neon">
             <Search className="h-7 w-7" />
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">Type your bike model name to find customization options</p>
-          <p className="mt-1 text-xs text-muted-foreground opacity-70">e.g. Duke 200, R15, Apache RTR 160</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Type your bike model name to find customization options
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground opacity-70">
+            e.g. Duke 200, R15, Apache RTR 160
+          </p>
         </div>
       )}
 
       {results.isLoading && (
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-5">
-          {Array.from({ length: 8 }).map((_, i) => <ModelCardSkeleton key={i} />)}
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ModelCardSkeleton key={i} />
+          ))}
         </div>
       )}
 
       {results.isError && (
         <div className="mt-8 text-center">
           <p className="text-sm text-crimson font-medium">Failed to search bike models</p>
-          <p className="mt-2 text-xs text-muted-foreground">Please check your connection and try again.</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Please check your connection and try again.
+          </p>
           <button
             type="button"
             onClick={() => results.refetch()}
@@ -96,7 +108,9 @@ function SearchPage() {
       {!results.isLoading && !results.isError && rows.length === 0 && q.trim() && (
         <div className="mt-12 text-center">
           <p className="text-sm text-muted-foreground">No models found for "{q}"</p>
-          <p className="mt-2 text-xs text-muted-foreground opacity-70">Try a different spelling, or ask the shop to add this model.</p>
+          <p className="mt-2 text-xs text-muted-foreground opacity-70">
+            Try a different spelling, or ask the shop to add this model.
+          </p>
         </div>
       )}
 
@@ -106,7 +120,9 @@ function SearchPage() {
             {rows.length} model{rows.length !== 1 ? "s" : ""} found
           </div>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-5">
-            {rows.map((model) => <ModelCard key={model.id} model={model} />)}
+            {rows.map((model) => (
+              <ModelCard key={model.id} model={model} />
+            ))}
           </div>
         </>
       )}
@@ -117,13 +133,14 @@ function SearchPage() {
 function ModelCard({ model }: { model: ModelSearchResult }) {
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl surface-panel transition-all duration-300 hover:-translate-y-0.5 hover:neon-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon">
-      <Link
-        to="/model/$modelId"
-        params={{ modelId: model.id }}
-        className="flex flex-col flex-1"
-      >
+      <Link to="/model/$modelId" params={{ modelId: model.id }} className="flex flex-col flex-1">
         {model.thumbnail_path ? (
-          <SignedImage path={model.thumbnail_path} alt={(model as any).name} aspect="4/3" className="rounded-b-none" />
+          <SignedImage
+            path={model.thumbnail_path}
+            alt={(model as any).name}
+            aspect="4/3"
+            className="rounded-b-none"
+          />
         ) : (
           <div className="aspect-[4/3] flex items-center justify-center bg-gradient-to-br from-surface-elevated via-surface to-background">
             <Search className="h-8 w-8 text-muted-foreground/30" />

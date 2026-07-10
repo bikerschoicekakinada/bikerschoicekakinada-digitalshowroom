@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* -----------------------------------------------------------
-   Bikers Choice Kakinada — Digital Catalog design system
+   Bikers Choice Kakinada — Design Explorer design system
    Matte black canvas · neon cyan primary · racing red accent
 ----------------------------------------------------------- */
 
@@ -48,19 +48,30 @@
   --font-mono-display: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --shadow-neon: 0 0 0 1px color-mix(in oklab, var(--neon) 55%, transparent),
-                 0 0 24px -4px color-mix(in oklab, var(--neon) 60%, transparent);
+  --shadow-neon:
+    0 0 0 1px color-mix(in oklab, var(--neon) 55%, transparent),
+    0 0 24px -4px color-mix(in oklab, var(--neon) 60%, transparent);
   --shadow-crimson: 0 0 24px -6px color-mix(in oklab, var(--crimson) 70%, transparent);
   --shadow-card: 0 30px 60px -30px rgba(0, 0, 0, 0.9);
 
-  --gradient-hero: radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--neon) 18%, transparent) 0%, transparent 60%),
-                   radial-gradient(60% 60% at 80% 100%, color-mix(in oklab, var(--crimson) 25%, transparent) 0%, transparent 70%),
-                   linear-gradient(180deg, #06090c 0%, #050607 100%);
+  --gradient-hero:
+    radial-gradient(
+      120% 80% at 50% 0%,
+      color-mix(in oklab, var(--neon) 18%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      60% 60% at 80% 100%,
+      color-mix(in oklab, var(--crimson) 25%, transparent) 0%,
+      transparent 70%
+    ),
+    linear-gradient(180deg, #06090c 0%, #050607 100%);
   --gradient-cyan: linear-gradient(135deg, oklch(0.86 0.16 210), oklch(0.72 0.19 200));
   --gradient-red: linear-gradient(135deg, oklch(0.72 0.24 25), oklch(0.55 0.24 20));
 }
 
-:root, .dark {
+:root,
+.dark {
   /* Base — matte carbon black */
   --background: oklch(0.13 0.01 240);
   --foreground: oklch(0.98 0.005 240);
@@ -101,7 +112,8 @@
 }
 
 @layer base {
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -109,9 +121,14 @@
     -webkit-tap-highlight-color: transparent;
     text-rendering: optimizeLegibility;
   }
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+  }
 
-  h1, h2, h3, .display {
+  h1,
+  h2,
+  h3,
+  .display {
     font-family: var(--font-display);
     letter-spacing: 0.01em;
   }
@@ -122,15 +139,22 @@
   }
 
   /* Scrollbar */
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
   ::-webkit-scrollbar-thumb {
     background: color-mix(in oklab, var(--neon) 30%, transparent);
     border-radius: 999px;
   }
 
   /* Safe area for bottom nav */
-  body { padding-bottom: env(safe-area-inset-bottom); }
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 @utility neon-text {
@@ -151,21 +175,30 @@
 }
 
 @utility surface-panel {
-  background: linear-gradient(180deg,
+  background: linear-gradient(
+    180deg,
     color-mix(in oklab, var(--surface-elevated) 100%, transparent) 0%,
-    color-mix(in oklab, var(--surface) 100%, transparent) 100%);
+    color-mix(in oklab, var(--surface) 100%, transparent) 100%
+  );
   border: 1px solid color-mix(in oklab, var(--neon) 12%, transparent);
   box-shadow: var(--shadow-card);
 }
 
 @utility scrollbar-none {
   scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes pulse-neon {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--neon) 50%, transparent); }
-  50% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--neon) 0%, transparent); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--neon) 50%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in oklab, var(--neon) 0%, transparent);
+  }
 }
 
 @utility animate-pulse-neon {

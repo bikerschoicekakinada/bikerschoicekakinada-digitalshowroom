@@ -7,8 +7,18 @@ import { SearchBar } from "@/components/SearchBar";
 import { SignedImage } from "@/components/SignedImage";
 import heroBike from "@/assets/hero-bike.jpg";
 import logoImg from "@/assets/logo.jpeg";
-import { listBrands, listRecentModelThumbnails, getModelsByIds, type ModelSearchResult } from "@/lib/catalog.functions";
-import { getRecentlyViewed, getSelectedBike, clearRecentlyViewed, clearAllCustomizations } from "@/lib/persistence";
+import {
+  listBrands,
+  listRecentModelThumbnails,
+  getModelsByIds,
+  type ModelSearchResult,
+} from "@/lib/catalog.functions";
+import {
+  getRecentlyViewed,
+  getSelectedBike,
+  clearRecentlyViewed,
+  clearAllCustomizations,
+} from "@/lib/persistence";
 import { cn } from "@/lib/utils";
 
 const brandsQuery = queryOptions({
@@ -35,7 +45,7 @@ function HomePage() {
   return (
     <AppShell>
       <Hero />
-      
+
       {/* Session Persistence Section */}
       <RecentlyViewed />
 
@@ -72,28 +82,43 @@ function Hero() {
   });
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-border" style={{ background: "var(--gradient-hero)" }}>
-      <img src={heroBike} alt="" width={1600} height={1200}
-        className="absolute inset-0 h-full w-full object-cover opacity-40 mix-blend-screen" />
+    <section
+      className="relative overflow-hidden rounded-3xl border border-border"
+      style={{ background: "var(--gradient-hero)" }}
+    >
+      <img
+        src={heroBike}
+        alt=""
+        width={1600}
+        height={1200}
+        className="absolute inset-0 h-full w-full object-cover opacity-40 mix-blend-screen"
+      />
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
       <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-end md:justify-between md:p-12">
         <div className="max-w-xl">
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
               <div className="absolute -inset-1 rounded-full bg-neon/40 blur-md" aria-hidden />
-              <img src={logoImg} alt="Bikers Choice Kakinada" width={72} height={72}
-                className="relative h-16 w-16 rounded-full object-cover ring-2 ring-neon md:h-20 md:w-20" />
+              <img
+                src={logoImg}
+                alt="Bikers Choice Kakinada"
+                width={72}
+                height={72}
+                className="relative h-16 w-16 rounded-full object-cover ring-2 ring-neon md:h-20 md:w-20"
+              />
             </div>
             <div className="inline-flex items-center gap-2 rounded-full border border-neon/40 bg-neon/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-neon">
-              <Sparkles className="h-3 w-3" /> Digital Showroom
+              <Sparkles className="h-3 w-3" /> Design Explorer
             </div>
           </div>
           <h1 className="mt-5 font-display text-3xl font-bold leading-[1.05] md:text-5xl">
-            Search your bike.<br className="hidden md:block" />
+            Search your bike.
+            <br className="hidden md:block" />
             <span className="neon-text"> Build your dream.</span>
           </h1>
           <p className="mt-3 max-w-md text-sm text-muted-foreground md:text-base">
-            Find your bike model, explore customization options — wraps, paint, accessories, and more — and get an instant price estimate.
+            Explore hundreds of bike customization ideas, compare designs, estimate pricing, and
+            plan your perfect bike customization.
           </p>
 
           {lastBike && (
@@ -107,7 +132,10 @@ function Hero() {
           )}
 
           <form
-            onSubmit={(e) => { e.preventDefault(); navigate({ to: "/search", search: { q } }); }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigate({ to: "/search", search: { q } });
+            }}
             className="mt-6"
           >
             <SearchBar
@@ -123,11 +151,18 @@ function Hero() {
           </form>
         </div>
         <div className="hidden shrink-0 flex-col gap-2 text-right md:flex">
-          <a href="https://wa.me/918523876978" target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center justify-end gap-2 rounded-full bg-neon px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-neon-foreground shadow-neon">
+          <a
+            href="https://wa.me/918523876978"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-end gap-2 rounded-full bg-neon px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-neon-foreground shadow-neon"
+          >
             WhatsApp us <ArrowRight className="h-4 w-4" />
           </a>
-          <a href="tel:+918523876978" className="text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+          <a
+            href="tel:+918523876978"
+            className="text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+          >
             +91 85238 76978
           </a>
         </div>
@@ -193,18 +228,21 @@ function RecentModels() {
 function ModelCard({ model }: { model: ModelSearchResult }) {
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl surface-panel transition-all duration-300 hover:-translate-y-0.5 hover:neon-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon">
-      <Link
-        to="/model/$modelId"
-        params={{ modelId: model.id }}
-        className="flex flex-col flex-1"
-      >
+      <Link to="/model/$modelId" params={{ modelId: model.id }} className="flex flex-col flex-1">
         {model.thumbnail_path ? (
-          <SignedImage path={model.thumbnail_path} alt={(model as any).name} aspect="4/3" className="rounded-b-none" />
+          <SignedImage
+            path={model.thumbnail_path}
+            alt={(model as any).name}
+            aspect="4/3"
+            className="rounded-b-none"
+          />
         ) : (
           <div className="aspect-[4/3] bg-gradient-to-br from-surface-elevated via-surface to-background" />
         )}
         <div className="p-3">
-          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{(model as any).brand?.name ?? ""}</div>
+          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            {(model as any).brand?.name ?? ""}
+          </div>
           <div className="mt-0.5 font-display text-sm font-semibold">{(model as any).name}</div>
           <div className="mt-1 flex items-center justify-between gap-2 text-[10px] uppercase tracking-widest">
             <span className="text-neon font-semibold whitespace-nowrap">Configure →</span>
@@ -235,7 +273,9 @@ function RecentGridSkeleton() {
     <section className="mt-12">
       <div className="h-5 w-40 animate-pulse rounded bg-surface" />
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-5">
-        {Array.from({ length: 8 }).map((_, i) => <ModelCardSkeleton key={i} />)}
+        {Array.from({ length: 8 }).map((_, i) => (
+          <ModelCardSkeleton key={i} />
+        ))}
       </div>
     </section>
   );
@@ -249,7 +289,10 @@ function SectionHeader({ title, href }: { title: string; href?: string }) {
     <div className="flex items-center justify-between gap-3">
       <h2 className="font-display text-lg font-semibold uppercase tracking-[0.14em]">{title}</h2>
       {href ? (
-        <Link to={href as "/search"} className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground transition hover:text-neon">
+        <Link
+          to={href as "/search"}
+          className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground transition hover:text-neon"
+        >
           View all <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       ) : null}
@@ -274,7 +317,11 @@ function RecentlyViewed() {
   });
 
   const handleClear = async () => {
-    if (window.confirm("This will clear all your saved selections and configuration history. Continue?")) {
+    if (
+      window.confirm(
+        "This will clear all your saved selections and configuration history. Continue?",
+      )
+    ) {
       clearRecentlyViewed();
       await clearAllCustomizations();
       setIds([]);
@@ -290,8 +337,12 @@ function RecentlyViewed() {
     <section className="mt-10 border-b border-border/40 pb-10">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">Welcome back</div>
-          <h2 className="font-display text-lg font-semibold uppercase tracking-widest">Your Recent Configurations</h2>
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+            Welcome back
+          </div>
+          <h2 className="font-display text-lg font-semibold uppercase tracking-widest">
+            Your Recent Configurations
+          </h2>
         </div>
         <button
           onClick={handleClear}

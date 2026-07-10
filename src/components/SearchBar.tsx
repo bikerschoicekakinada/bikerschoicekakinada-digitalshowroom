@@ -16,7 +16,9 @@ export const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
         className,
       )}
     >
-      <Search className={cn("shrink-0 text-muted-foreground", variant === "lg" ? "h-5 w-5" : "h-4 w-4")} />
+      <Search
+        className={cn("shrink-0 text-muted-foreground", variant === "lg" ? "h-5 w-5" : "h-4 w-4")}
+      />
       <input
         ref={ref}
         type="search"

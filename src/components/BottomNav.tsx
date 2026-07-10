@@ -32,9 +32,7 @@ export function BottomNav() {
                 <span
                   className={cn(
                     "grid h-9 w-9 place-items-center rounded-full transition",
-                    active
-                      ? "bg-neon/15 neon-ring"
-                      : "bg-transparent",
+                    active ? "bg-neon/15 neon-ring" : "bg-transparent",
                   )}
                 >
                   <Icon className="h-4.5 w-4.5" strokeWidth={active ? 2.5 : 2} />
