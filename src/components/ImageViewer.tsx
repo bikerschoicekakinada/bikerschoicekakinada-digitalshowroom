@@ -1,16 +1,13 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
 import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { getImageDetail } from "@/lib/catalog.functions";
 
 type ImageMeta = {
   id: string;
-  original_path?: string | null;
   thumbnail_path: string;
-  small_path?: string | null;
-  medium_path?: string | null;
-  large_path?: string | null;
-  description?: string | null;
 };
 
 export function ImageViewer({
@@ -23,26 +20,55 @@ export function ImageViewer({
   onClose: () => void;
 }) {
   const [idx, setIdx] = useState(initialIndex);
-  const [zoomed, setZoomed] = useState(false);
-  const [previewLoaded, setPreviewLoaded] = useState(false);
-  const [zoomLoaded, setZoomLoaded] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [pinchStartDist, setPinchStartDist] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [lastTap, setLastTap] = useState<number>(0);
+  const [originalLoaded, setOriginalLoaded] = useState(false);
 
-  // Close on Escape, navigate on Arrow keys
+  // Active, Prev, Next image references
+  const activeImgMeta = images[idx];
+  const prevImgMeta = idx > 0 ? images[idx - 1] : null;
+  const nextImgMeta = idx < images.length - 1 ? images[idx + 1] : null;
+
+  // 1. Fetch full details on-demand for active, prev, and next images
+  const { data: activeDetails } = useQuery({
+    queryKey: ["image-detail", activeImgMeta?.id],
+    queryFn: () => getImageDetail({ data: { designId: activeImgMeta!.id } }),
+    enabled: !!activeImgMeta?.id,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: prevDetails } = useQuery({
+    queryKey: ["image-detail", prevImgMeta?.id],
+    queryFn: () => getImageDetail({ data: { designId: prevImgMeta!.id } }),
+    enabled: !!prevImgMeta?.id,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: nextDetails } = useQuery({
+    queryKey: ["image-detail", nextImgMeta?.id],
+    queryFn: () => getImageDetail({ data: { designId: nextImgMeta!.id } }),
+    enabled: !!nextImgMeta?.id,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // Reset zoom, panning, and loaded flags on image navigation
+  useEffect(() => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+    setOriginalLoaded(false);
+  }, [idx]);
+
+  // Navigate next/prev keyboard controls
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowRight") {
-        setIdx((i) => Math.min(images.length - 1, i + 1));
-        setZoomed(false);
-        setPreviewLoaded(false);
-        setZoomLoaded(false);
-      }
-      if (e.key === "ArrowLeft") {
-        setIdx((i) => Math.max(0, i - 1));
-        setZoomed(false);
-        setPreviewLoaded(false);
-        setZoomLoaded(false);
-      }
+      if (e.key === "ArrowRight") handleNext();
+      if (e.key === "ArrowLeft") handlePrev();
     };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -50,125 +76,158 @@ export function ImageViewer({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [onClose, images.length]);
+  }, [onClose, images.length, idx]);
 
-  // Network speed detection
-  const isConnectionSlow = useMemo(() => {
-    if (typeof navigator !== "undefined" && (navigator as any).connection) {
-      const conn = (navigator as any).connection;
-      if (conn.saveData) return true;
-      if (["2g", "3g"].includes(conn.effectiveType)) return true;
-      if (conn.downlink && conn.downlink < 2.0) return true;
-    }
-    return false;
-  }, []);
-
-  const activeImg = images[idx];
-
-  // Resolve target paths for progressive levels
-  const thumbPath = activeImg?.thumbnail_path;
-  const previewPath = isConnectionSlow 
-    ? (activeImg?.medium_path ?? activeImg?.thumbnail_path)
-    : (activeImg?.large_path ?? activeImg?.thumbnail_path);
-  const zoomPath = activeImg?.original_path ?? activeImg?.thumbnail_path;
-
-  // Smart Preloading: gather paths for current, previous, and next images
+  // Gather paths to sign (Thumb, Medium, Original)
   const pathsToRequest = useMemo(() => {
     const arr: string[] = [];
-    
-    // Current image paths
-    if (thumbPath) arr.push(thumbPath);
-    if (previewPath) arr.push(previewPath);
-    if (zoomPath) arr.push(zoomPath);
 
-    // Previous image paths (large preview + thumb)
-    if (idx > 0) {
-      const prev = images[idx - 1];
-      if (prev.thumbnail_path) arr.push(prev.thumbnail_path);
-      const prevLarge = isConnectionSlow ? prev.medium_path : prev.large_path;
-      if (prevLarge) arr.push(prevLarge);
-    }
+    // Current active image paths
+    if (activeImgMeta?.thumbnail_path) arr.push(activeImgMeta.thumbnail_path);
+    if (activeDetails?.medium_path) arr.push(activeDetails.medium_path);
+    if (activeDetails?.original_path) arr.push(activeDetails.original_path);
 
-    // Next image paths (large preview + thumb)
-    if (idx < images.length - 1) {
-      const next = images[idx + 1];
-      if (next.thumbnail_path) arr.push(next.thumbnail_path);
-      const nextLarge = isConnectionSlow ? next.medium_path : next.large_path;
-      if (nextLarge) arr.push(nextLarge);
-    }
+    // Adjacent images original + medium paths for preloading!
+    if (prevImgMeta?.thumbnail_path) arr.push(prevImgMeta.thumbnail_path);
+    if (prevDetails?.original_path) arr.push(prevDetails.original_path);
+    if (prevDetails?.medium_path) arr.push(prevDetails.medium_path);
+
+    if (nextImgMeta?.thumbnail_path) arr.push(nextImgMeta.thumbnail_path);
+    if (nextDetails?.original_path) arr.push(nextDetails.original_path);
+    if (nextDetails?.medium_path) arr.push(nextDetails.medium_path);
 
     return [...new Set(arr)];
-  }, [images, idx, isConnectionSlow, thumbPath, previewPath, zoomPath]);
+  }, [activeImgMeta, activeDetails, prevImgMeta, prevDetails, nextImgMeta, nextDetails]);
 
   const { urls } = useSignedUrls(pathsToRequest);
 
-  const thumbUrl = thumbPath ? urls[thumbPath] : null;
-  const previewUrl = previewPath ? urls[previewPath] : null;
-  const zoomUrl = zoomPath ? urls[zoomPath] : null;
-
-  // Background Image Preloader
-  useEffect(() => {
-    const urlsToPreload: string[] = [];
-    if (idx > 0) {
-      const prev = images[idx - 1];
-      const prevLarge = isConnectionSlow ? prev.medium_path : prev.large_path;
-      if (prevLarge && urls[prevLarge]) urlsToPreload.push(urls[prevLarge]);
-    }
-    if (idx < images.length - 1) {
-      const next = images[idx + 1];
-      const nextLarge = isConnectionSlow ? next.medium_path : next.large_path;
-      if (nextLarge && urls[nextLarge]) urlsToPreload.push(urls[nextLarge]);
-    }
-    for (const u of urlsToPreload) {
-      const img = new Image();
-      img.src = u;
-    }
-  }, [idx, urls, images, isConnectionSlow]);
+  // Background Image File Preloader for adjacent original HD files
+  const prevOriginalUrl = prevDetails?.original_path ? urls[prevDetails.original_path] : null;
+  const nextOriginalUrl = nextDetails?.original_path ? urls[nextDetails.original_path] : null;
 
   const handleNext = () => {
     if (idx < images.length - 1) {
       setIdx((i) => i + 1);
-      setZoomed(false);
-      setPreviewLoaded(false);
-      setZoomLoaded(false);
     }
   };
 
   const handlePrev = () => {
     if (idx > 0) {
       setIdx((i) => i - 1);
-      setZoomed(false);
-      setPreviewLoaded(false);
-      setZoomLoaded(false);
     }
   };
 
   const handleDoubleTap = (e: React.MouseEvent) => {
     e.preventDefault();
-    setZoomed((z) => !z);
+    const now = Date.now();
+    if (now - lastTap < 300) {
+      if (scale > 1) {
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+      } else {
+        setScale(2.5);
+      }
+    }
+    setLastTap(now);
   };
 
+  // Mobile Touch Gestures
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      setTouchStart({ x: t.clientX, y: t.clientY });
+      if (scale > 1) {
+        setIsDragging(true);
+        setDragStart({ x: t.clientX - position.x, y: t.clientY - position.y });
+      }
+    } else if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      setPinchStartDist(dist);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && touchStart) {
+      const t = e.touches[0];
+      if (scale > 1 && isDragging) {
+        const newX = t.clientX - dragStart.x;
+        const newY = t.clientY - dragStart.y;
+        
+        // Lock panning limits relative to scale zoom level
+        const maxPanX = (scale - 1) * window.innerWidth / 2;
+        const maxPanY = (scale - 1) * window.innerHeight / 2;
+        setPosition({
+          x: Math.max(-maxPanX, Math.min(maxPanX, newX)),
+          y: Math.max(-maxPanY, Math.min(maxPanY, newY))
+        });
+      }
+    } else if (e.touches.length === 2 && pinchStartDist) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const zoomFactor = dist / pinchStartDist;
+      const nextScale = Math.max(1, Math.min(4, scale * zoomFactor));
+      setScale(nextScale);
+      setPinchStartDist(dist);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    setIsDragging(false);
+    setPinchStartDist(null);
+
+    // Swipe trigger at normal scale (1x)
+    if (scale === 1 && touchStart && e.changedTouches.length === 1) {
+      const t = e.changedTouches[0];
+      const deltaX = t.clientX - touchStart.x;
+      const deltaY = t.clientY - touchStart.y;
+
+      if (Math.abs(deltaX) > 60 && Math.abs(deltaY) < 60) {
+        if (deltaX < 0) {
+          handleNext();
+        } else {
+          handlePrev();
+        }
+      }
+    }
+    setTouchStart(null);
+  };
+
+  const thumbUrl = activeImgMeta?.thumbnail_path ? urls[activeImgMeta.thumbnail_path] : null;
+  const mediumUrl = activeDetails?.medium_path ? urls[activeDetails.medium_path] : null;
+  const originalUrl = activeDetails?.original_path ? urls[activeDetails.original_path] : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background/98 backdrop-blur-xl font-sans select-none">
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/98 backdrop-blur-xl font-sans select-none">
+      {/* Invisible preload images for browser background cache */}
+      {prevOriginalUrl && <img src={prevOriginalUrl} className="hidden" aria-hidden="true" alt="" />}
+      {nextOriginalUrl && <img src={nextOriginalUrl} className="hidden" aria-hidden="true" alt="" />}
+
       {/* Top action bar */}
-      <div className="flex items-center justify-between px-4 py-4 md:px-8 z-25">
-        <div className="flex flex-col">
-          <span className="font-display text-sm font-semibold text-foreground">
-            {idx + 1} / {images.length}
-          </span>
-          {isConnectionSlow && (
-            <span className="text-[10px] text-amber-500 font-medium">Lite Mode (Slow Connection)</span>
-          )}
-        </div>
+      <div className="flex items-center justify-between px-4 py-4 md:px-8 z-20">
+        <span className="font-display text-sm font-semibold text-foreground">
+          {idx + 1} / {images.length}
+        </span>
         <div className="flex items-center gap-2">
           {/* Zoom Toggle Button */}
           <button
             type="button"
-            onClick={() => setZoomed(!zoomed)}
-            title={zoomed ? "Zoom Out" : "Zoom In (Original Resolution)"}
+            onClick={() => {
+              if (scale > 1) {
+                setScale(1);
+                setPosition({ x: 0, y: 0 });
+              } else {
+                setScale(2.5);
+              }
+            }}
+            title={scale > 1 ? "Zoom Out" : "Zoom In (Original Resolution)"}
             className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface hover:neon-ring transition cursor-pointer text-foreground"
           >
-            {zoomed ? <ZoomOut className="h-4.5 w-4.5 text-neon" /> : <ZoomIn className="h-4.5 w-4.5" />}
+            {scale > 1 ? <ZoomOut className="h-4.5 w-4.5 text-neon" /> : <ZoomIn className="h-4.5 w-4.5" />}
           </button>
           
           <button
@@ -183,15 +242,21 @@ export function ImageViewer({
       </div>
 
       {/* Main viewer viewport */}
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden px-4 pb-4">
+      <div 
+        className="relative flex flex-1 items-center justify-center overflow-hidden px-4 pb-4"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div 
-          className={cn(
-            "relative w-full h-full max-h-full max-w-full flex items-center justify-center transition-all duration-300",
-            zoomed ? "scale-150 overflow-auto cursor-zoom-out" : "cursor-zoom-in"
-          )}
-          onDoubleClick={handleDoubleTap}
+          className="relative w-full h-full max-h-full max-w-full flex items-center justify-center transition-transform duration-100 ease-out"
+          style={{
+            transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+            transformOrigin: "center center"
+          }}
+          onClick={handleDoubleTap}
         >
-          {/* 1. Low-res blur thumbnail background loaded instantly */}
+          {/* 1. Low-res blurred background thumbnail loaded instantly */}
           {thumbUrl && (
             <img
               src={thumbUrl}
@@ -200,40 +265,36 @@ export function ImageViewer({
             />
           )}
 
-          {/* 2. High-quality preview layer (Large/Medium) */}
-          {previewUrl && (
+          {/* 2. Optimized transition image */}
+          {mediumUrl && !originalLoaded && (
             <img
-              src={previewUrl}
+              src={mediumUrl}
               alt=""
-              onLoad={() => setPreviewLoaded(true)}
-              className={cn(
-                "absolute max-h-full max-w-full rounded-2xl object-contain shadow-2xl transition-opacity duration-500",
-                previewLoaded ? "opacity-100" : "opacity-0"
-              )}
+              className="absolute max-h-full max-w-full rounded-2xl object-contain shadow-2xl transition-opacity duration-300"
             />
           )}
 
-          {/* 3. Original HD Image Layer for Zooming */}
-          {zoomed && zoomUrl && (
+          {/* 3. Original HD Image Layer */}
+          {originalUrl && (
             <img
-              src={zoomUrl}
-              alt={activeImg?.description ?? "Bike"}
-              onLoad={() => setZoomLoaded(true)}
+              src={originalUrl}
+              alt={activeDetails?.title ?? "Bike"}
+              onLoad={() => setOriginalLoaded(true)}
               className={cn(
                 "absolute max-h-full max-w-full rounded-2xl object-contain shadow-2xl transition-opacity duration-500",
-                zoomLoaded ? "opacity-100" : "opacity-0"
+                originalLoaded ? "opacity-100" : "opacity-0"
               )}
             />
           )}
 
           {/* Fallback spinner if not loaded */}
-          {!previewUrl && (
+          {!mediumUrl && !originalUrl && (
             <div className="h-2/3 w-2/3 animate-pulse rounded-2xl bg-surface" />
           )}
         </div>
 
-        {/* Previous / Next buttons */}
-        {!zoomed && images.length > 1 && (
+        {/* Previous / Next click buttons for desktop */}
+        {scale === 1 && images.length > 1 && (
           <>
             <button
               type="button"
@@ -241,7 +302,7 @@ export function ImageViewer({
               onClick={handlePrev}
               disabled={idx === 0}
               className={cn(
-                "absolute left-3 grid h-11 w-11 place-items-center rounded-full border border-border bg-surface/70 backdrop-blur transition cursor-pointer text-foreground",
+                "absolute left-3 grid h-11 w-11 place-items-center rounded-full border border-border bg-surface/70 backdrop-blur transition cursor-pointer text-foreground z-30",
                 idx === 0 ? "opacity-30 pointer-events-none" : "hover:neon-ring",
               )}
             >
@@ -253,7 +314,7 @@ export function ImageViewer({
               onClick={handleNext}
               disabled={idx === images.length - 1}
               className={cn(
-                "absolute right-3 grid h-11 w-11 place-items-center rounded-full border border-border bg-surface/70 backdrop-blur transition cursor-pointer text-foreground",
+                "absolute right-3 grid h-11 w-11 place-items-center rounded-full border border-border bg-surface/70 backdrop-blur transition cursor-pointer text-foreground z-30",
                 idx === images.length - 1 ? "opacity-30 pointer-events-none" : "hover:neon-ring",
               )}
             >
@@ -264,38 +325,9 @@ export function ImageViewer({
       </div>
 
       {/* Description caption */}
-      {activeImg?.description && (
-        <div className="px-6 py-2 text-center text-xs text-muted-foreground italic max-w-2xl mx-auto z-10 bg-black/40 rounded-full mb-2">
-          {activeImg.description}
-        </div>
-      )}
-
-      {/* Slide selector strip */}
-      {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto scrollbar-none px-4 pb-4 justify-start md:justify-center z-10">
-          {images.map((img, i) => (
-            <button
-              key={img.id}
-              type="button"
-              onClick={() => {
-                setIdx(i);
-                setZoomed(false);
-                setPreviewLoaded(false);
-                setZoomLoaded(false);
-              }}
-              className={cn(
-                "shrink-0 overflow-hidden rounded-xl border transition cursor-pointer",
-                i === idx ? "border-neon neon-ring" : "border-border opacity-60 hover:opacity-100",
-              )}
-              style={{ width: 64, height: 80 }}
-            >
-              {urls[img.thumbnail_path] ? (
-                <img src={urls[img.thumbnail_path]} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full animate-pulse bg-surface" />
-              )}
-            </button>
-          ))}
+      {activeDetails?.description && (
+        <div className="px-6 py-2 text-center text-xs text-muted-foreground italic max-w-2xl mx-auto z-10 bg-black/40 rounded-full mb-6">
+          {activeDetails.description}
         </div>
       )}
     </div>
