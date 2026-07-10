@@ -7,8 +7,17 @@ let _client: ReturnType<typeof createClient<Database>> | undefined;
 
 export function getPublicServerClient() {
   if (_client) return _client;
-  const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!url || !key) {
+    const missing = [
+      ...(!url ? ["SUPABASE_URL / VITE_SUPABASE_URL"] : []),
+      ...(!key ? ["SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PUBLISHABLE_KEY"] : []),
+    ];
+    throw new Error(`Missing Supabase environment variable(s) on server: ${missing.join(", ")}`);
+  }
+
   _client = createClient<Database>(url, key, {
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
   });
