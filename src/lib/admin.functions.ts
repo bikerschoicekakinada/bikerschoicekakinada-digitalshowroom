@@ -55,31 +55,44 @@ export const adminLogin = createServerFn({ method: "POST" })
     // Rate limit: max 5 login attempts per IP in 15 minutes
     const ip = getClientIp();
     if (!rateLimit(`login:${ip}`, 5, 15 * 60 * 1000)) {
-      return { ok: false as const };
+      return { ok: false as const, reason: "Too many attempts. Please wait 15 minutes." };
     }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Fetch hashed PIN from admin_settings (only service role client has access)
-    const { data: settings, error } = await (supabaseAdmin as any)
-      .from("admin_settings")
-      .select("admin_pin_hash")
-      .eq("id", "00000000-0000-0000-0000-000000000001")
-      .maybeSingle();
+      // Fetch hashed PIN from admin_settings (only service role client has access)
+      const { data: settings, error } = await (supabaseAdmin as any)
+        .from("admin_settings")
+        .select("admin_pin_hash")
+        .eq("id", "00000000-0000-0000-0000-000000000001")
+        .maybeSingle();
 
-    if (error || !settings) {
-      console.error("Failed to retrieve admin settings:", error);
-      return { ok: false as const };
+      if (error) {
+        console.error("[adminLogin] Database error:", error.message);
+        return { ok: false as const, reason: "Database connection error. Contact the developer." };
+      }
+      if (!settings) {
+        console.error("[adminLogin] admin_settings row not found.");
+        return { ok: false as const, reason: "Admin settings not configured. Run the migration." };
+      }
+      if (!settings.admin_pin_hash || settings.admin_pin_hash.length < 10) {
+        console.error("[adminLogin] admin_pin_hash is empty or too short.");
+        return { ok: false as const, reason: "Admin PIN not set. Contact the developer." };
+      }
+
+      // Verify PIN using bcrypt
+      const match = await bcrypt.compare(data.pin, settings.admin_pin_hash);
+      if (!match) return { ok: false as const, reason: "Incorrect PIN" };
+
+      const { getAdminSession } = await import("./admin-session.server");
+      const session = await getAdminSession();
+      await session.update({ unlocked: true, issuedAt: Date.now() });
+      return { ok: true as const };
+    } catch (err: any) {
+      console.error("[adminLogin] Unexpected error:", err);
+      return { ok: false as const, reason: err?.message ?? "Unexpected server error" };
     }
-
-    // Verify PIN using bcrypt
-    const match = await bcrypt.compare(data.pin, settings.admin_pin_hash);
-    if (!match) return { ok: false as const };
-
-    const { getAdminSession } = await import("./admin-session.server");
-    const session = await getAdminSession();
-    await session.update({ unlocked: true, issuedAt: Date.now() });
-    return { ok: true as const };
   });
 
 export const adminLogout = createServerFn({ method: "POST" }).handler(async () => {

@@ -108,6 +108,16 @@ export type ConfiguratorCategoryRow = {
   items: CategoryItemRow[];
 };
 
+/** Category header without items — used for lazy-loading configurator */
+export type ConfiguratorCategoryMeta = {
+  id: string;
+  slug: string;
+  name: string;
+  icon: string | null;
+  sort_order: number;
+  itemCount: number;
+};
+
 /** Model with its brand + optional thumbnail for search/listing */
 export type ModelSearchResult = {
   id: string;
@@ -223,54 +233,65 @@ export const searchModels = createServerFn({ method: "GET" })
     return results;
   });
 
-/**
- * List all images (designs rows) for a specific model, paginated.
- */
 export const listImagesByModel = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
     z
       .object({
         modelId: z.string().uuid(),
-        limit: z.number().min(1).max(100).default(40),
+        limit: z.number().min(1).max(500).default(24),
         offset: z.number().min(0).default(0),
       })
-      .parse(d),
+      .parse(d ?? {}),
   )
   .handler(async ({ data }) => {
     const { getPublicServerClient } = await import("./supabase-public.server");
     const supabase = getPublicServerClient();
 
-    const selectStrAll = "id,title,brand_id,model_id,thumbnail_path,image_paths,original_path,small_path,medium_path,large_path,sort_order,created_at,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name)";
-    const selectStrSafe = "id,title,brand_id,model_id,thumbnail_path,image_paths,sort_order,created_at,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name)";
+    // Query ONLY minimal fields required for thumbnails rendering:
+    // id, thumbnail_path, model_id, sort_order
+    const { data: rows, count, error } = await supabase
+      .from("designs")
+      .select("id,thumbnail_path,model_id,sort_order", { count: "exact" })
+      .eq("model_id", data.modelId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false })
+      .range(data.offset, data.offset + data.limit - 1);
 
-    const executeQuery = async (columnsStr: string) => {
-      return await supabase
-        .from("designs")
-        .select(columnsStr, { count: "exact" })
-        .eq("model_id", data.modelId)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: false })
-        .range(data.offset, data.offset + data.limit - 1);
+    if (error) throw error;
+
+    return {
+      rows: (rows ?? []) as any[],
+      count: count ?? 0,
     };
+  });
 
-    let result = await executeQuery(selectStrAll);
-    if (result.error) {
-      console.warn("[listImagesByModel] Query failed with optimized paths, falling back:", result.error);
-      result = await executeQuery(selectStrSafe);
-      if (result.error) throw result.error;
-    }
+/**
+ * Fetch full details for a single opened image, including high-res original, medium paths, description, tags.
+ */
+export const getImageDetail = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ designId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { getPublicServerClient } = await import("./supabase-public.server");
+    const supabase = getPublicServerClient();
 
-    const rows = (result.data ?? []).map((r: any) => ({
+    const selectStr = "id,title,brand_id,model_id,thumbnail_path,original_path,small_path,medium_path,large_path,sort_order,created_at,description,tags";
+
+    const { data: row, error } = await supabase
+      .from("designs")
+      .select(selectStr)
+      .eq("id", data.designId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!row) return null;
+
+    const r = row as any;
+    return {
       ...r,
       original_path: r.original_path ?? null,
       small_path: r.small_path ?? null,
       medium_path: r.medium_path ?? null,
       large_path: r.large_path ?? null,
-    }));
-
-    return {
-      rows: rows as unknown as ImageRow[],
-      count: result.count ?? 0,
     };
   });
 
@@ -352,6 +373,106 @@ export const getConfiguratorData = createServerFn({ method: "GET" })
     };
   });
 
+/**
+ * Lightweight version: returns model + category headers (no items).
+ * Each category includes the count of active assigned items.
+ * Items are loaded on-demand via getConfiguratorCategoryItems.
+ */
+export const getConfiguratorCategoryMeta = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ modelId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { getPublicServerClient } = await import("./supabase-public.server");
+    const supabase = getPublicServerClient();
+
+    // 1. Model info
+    const { data: model, error: modelErr } = await supabase
+      .from("models")
+      .select("id,slug,name,brand_id,brand:brands(id,slug,name)")
+      .eq("id", data.modelId)
+      .maybeSingle();
+    if (modelErr) throw modelErr;
+    if (!model) return null;
+
+    // 2. Item IDs assigned to this model
+    const { data: itemAssignments, error: assignErr } = await (supabase as any)
+      .from("category_item_model_assignments")
+      .select("item_id")
+      .eq("model_id", data.modelId);
+    if (assignErr) throw assignErr;
+
+    const itemIds = (itemAssignments ?? []).map((a: any) => a.item_id as string);
+
+    let categories: ConfiguratorCategoryMeta[] = [];
+    if (itemIds.length > 0) {
+      // 3. Fetch items' category_id only (lightweight)
+      const { data: items, error: itemErr } = await (supabase as any)
+        .from("category_items")
+        .select("id,category_id,category:categories(id,slug,name,icon,sort_order,is_active)")
+        .in("id", itemIds)
+        .eq("is_active", true);
+      if (itemErr) throw itemErr;
+
+      // Group and count by category
+      const catMap = new Map<string, ConfiguratorCategoryMeta>();
+      for (const item of items ?? []) {
+        const cat = item.category;
+        if (!cat || !cat.is_active) continue;
+        if (!catMap.has(cat.id)) {
+          catMap.set(cat.id, {
+            id: cat.id,
+            slug: cat.slug,
+            name: cat.name,
+            icon: cat.icon,
+            sort_order: cat.sort_order,
+            itemCount: 0,
+          });
+        }
+        catMap.get(cat.id)!.itemCount++;
+      }
+
+      categories = Array.from(catMap.values()).sort((a, b) => a.sort_order - b.sort_order);
+    }
+
+    return {
+      model: model as unknown as ModelSearchResult,
+      categories,
+    };
+  });
+
+/**
+ * Fetch the active items for a single category assigned to a model.
+ * Used for lazy-loading category contents when the user expands an accordion.
+ */
+export const getConfiguratorCategoryItems = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ modelId: z.string().uuid(), categoryId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { getPublicServerClient } = await import("./supabase-public.server");
+    const supabase = getPublicServerClient();
+
+    // 1. Get item IDs assigned to this model
+    const { data: assignments, error: assignErr } = await (supabase as any)
+      .from("category_item_model_assignments")
+      .select("item_id")
+      .eq("model_id", data.modelId);
+    if (assignErr) throw assignErr;
+
+    const itemIds = (assignments ?? []).map((a: any) => a.item_id as string);
+    if (itemIds.length === 0) return [];
+
+    // 2. Fetch items belonging to this category
+    const { data: items, error: itemErr } = await (supabase as any)
+      .from("category_items")
+      .select("id,category_id,name,price,description,is_active,is_recommended,sort_order,created_at")
+      .in("id", itemIds)
+      .eq("category_id", data.categoryId)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    if (itemErr) throw itemErr;
+
+    return (items ?? []) as CategoryItemRow[];
+  });
 
 /**
  * Signed URLs for images (bucket is private).

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ type Props = {
  * skeleton fallback and lazy loading. Safe for large lists.
  * Supports progressive loading when previewPath (e.g. thumbnail) is provided.
  */
-export function SignedImage({
+export const SignedImage = memo(function SignedImage({
   path,
   previewPath,
   alt,
@@ -86,5 +86,5 @@ export function SignedImage({
       ) : null}
     </div>
   );
-}
+});
 

@@ -129,12 +129,12 @@ function LoginCard() {
     mutationFn: async () => login({ data: { pin } }),
     onSuccess: (res) => {
       if (!res.ok) {
-        setError("Incorrect PIN");
+        setError((res as any).reason ?? "Incorrect PIN");
         return;
       }
       qc.invalidateQueries({ queryKey: ["admin"] });
     },
-    onError: () => setError("Login failed"),
+    onError: (err: any) => setError(err?.message ?? "Login failed — check connection"),
   });
 
   return (
@@ -281,7 +281,7 @@ function UploadTab() {
   const upsertFn = useServerFn(adminUpsertDesign);
   const optimizeFn = useServerFn(adminOptimizeImage);
 
-  const brands = useQuery({ queryKey: ["brands"], queryFn: () => listBrands() });
+  const brands = useQuery({ queryKey: ["brands"], queryFn: () => listBrands(), staleTime: 1000 * 60 * 5 });
   const [brandId, setBrandId] = useState("");
   const [modelId, setModelId] = useState("");
   const [queue, setQueue] = useState<UploadQueueItem[]>([]);
@@ -293,6 +293,7 @@ function UploadTab() {
     queryKey: ["models", brandId],
     queryFn: () => listModels({ data: { brandId } }),
     enabled: !!brandId,
+    staleTime: 1000 * 60 * 5,
   });
 
   // Drag & drop handlers
@@ -696,7 +697,7 @@ function LibraryTab() {
   const qc = useQueryClient();
   const upsertCat = useServerFn(adminUpsertCategory);
   const deleteCat = useServerFn(adminDeleteCategory);
-  const cats = useQuery({ queryKey: ["categories"], queryFn: () => listCategories() });
+  const cats = useQuery({ queryKey: ["categories"], queryFn: () => listCategories(), staleTime: 1000 * 60 * 5 });
   const [newCatName, setNewCatName] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
