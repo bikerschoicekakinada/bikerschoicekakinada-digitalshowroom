@@ -15,7 +15,9 @@ export function getPublicServerClient() {
       ...(!url ? ["SUPABASE_URL / VITE_SUPABASE_URL"] : []),
       ...(!key ? ["SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PUBLISHABLE_KEY"] : []),
     ];
-    throw new Error(`Missing Supabase environment variable(s) on server: ${missing.join(", ")}`);
+    const message = `Missing Supabase environment variable(s) on server: ${missing.join(", ")}`;
+    console.error(`[Supabase] ${message}`);
+    throw new Error("Server configuration error. Please contact the administrator.");
   }
 
   _client = createClient<Database>(url, key, {

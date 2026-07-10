@@ -43,7 +43,7 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       ];
       const message = `Missing Supabase environment variable(s): ${missing.join(', ')}.`;
       console.error(`[Supabase] ${message}`);
-      throw new Error(message);
+      throw new Error("Server configuration error. Please contact the administrator.");
     }
     
     const request = getRequest();

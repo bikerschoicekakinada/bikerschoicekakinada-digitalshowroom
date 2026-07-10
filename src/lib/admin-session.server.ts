@@ -7,7 +7,9 @@ export type AdminSession = { unlocked?: boolean; issuedAt?: number };
 export function adminSessionConfig() {
   const password = process.env.SESSION_SECRET;
   if (!password || password.length < 32) {
-    throw new Error("SESSION_SECRET is missing or too short (need 32+ chars).");
+    const message = "SESSION_SECRET is missing or too short (need 32+ chars).";
+    console.error(`[Session] ${message}`);
+    throw new Error("Server configuration error. Please contact the administrator.");
   }
   return {
     password,

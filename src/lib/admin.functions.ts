@@ -91,7 +91,20 @@ export const adminLogin = createServerFn({ method: "POST" })
       return { ok: true as const };
     } catch (err: any) {
       console.error("[adminLogin] Unexpected error:", err);
-      return { ok: false as const, reason: err?.message ?? "Unexpected server error" };
+      const msg = err?.message ?? "";
+      let safeReason = "Server configuration error. Please contact the administrator.";
+      if (
+        msg.includes("Server configuration error") ||
+        msg.includes("Incorrect PIN") ||
+        msg.includes("Rate limit exceeded") ||
+        msg.includes("not configured") ||
+        msg.includes("not set")
+      ) {
+        safeReason = msg;
+      } else if (process.env.NODE_ENV !== "production") {
+        safeReason = msg || "Unexpected server error";
+      }
+      return { ok: false as const, reason: safeReason };
     }
   });
 
