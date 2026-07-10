@@ -11,18 +11,27 @@ const memo = new Map<string, { url: string; expires: number }>();
  */
 export function useSignedUrls(paths: string[]) {
   const sign = useServerFn(signImageUrls);
-  const key = useMemo(() => [...new Set(paths.filter(Boolean))].sort(), [paths]);
+  
+  const serialized = paths.filter(Boolean).sort().join(",");
+  
+  const key = useMemo(() => {
+    return [...new Set(serialized.split(","))].filter(Boolean);
+  }, [serialized]);
+
   const need = useMemo(() => {
     const now = Date.now();
     return key.filter((p) => !memo.get(p) || memo.get(p)!.expires < now + 60_000);
   }, [key]);
 
+  const needSerialized = need.join(",");
+
   const query = useQuery({
-    queryKey: ["sign", need],
+    queryKey: ["sign", needSerialized],
     enabled: need.length > 0,
     staleTime: 1000 * 60 * 60 * 4,
     queryFn: async () => {
-      const res = await sign({ data: { paths: need, expiresIn: 60 * 60 * 6 } });
+      const pathsToSign = needSerialized.split(",").filter(Boolean);
+      const res = await sign({ data: { paths: pathsToSign, expiresIn: 60 * 60 * 6 } });
       const expires = Date.now() + 1000 * 60 * 60 * 5;
       for (const [p, url] of Object.entries(res)) memo.set(p, { url, expires });
       return res;

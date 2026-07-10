@@ -59,6 +59,7 @@ export type ModelRow = {
   brand_id: string;
   slug: string;
   name: string;
+  designs_count?: number;
 };
 
 /** A single uploaded image tagged to a bike model */
@@ -126,6 +127,7 @@ export type ModelSearchResult = {
   brand_id: string;
   brand: { id: string; slug: string; name: string };
   thumbnail_path: string | null;
+  designs_count?: number;
 };
 
 // ============================================================
@@ -176,11 +178,19 @@ export const listModels = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { getPublicServerClient } = await import("./supabase-public.server");
     const supabase = getPublicServerClient();
-    let q = supabase.from("models").select("*").order("name");
+    let q = supabase.from("models").select("*, designs(count)").order("name");
     if (data.brandId) q = q.eq("brand_id", data.brandId);
     const { data: rows, error } = await q;
     if (error) throw error;
-    return (rows ?? []) as ModelRow[];
+
+    const mapped = (rows ?? []).map((m: any) => ({
+      id: m.id,
+      brand_id: m.brand_id,
+      slug: m.slug,
+      name: m.name,
+      designs_count: m.designs?.[0]?.count ?? 0,
+    }));
+    return mapped as (ModelRow & { designs_count: number })[];
   });
 
 /**
@@ -197,7 +207,7 @@ export const searchModels = createServerFn({ method: "GET" })
 
     let q = supabase
       .from("models")
-      .select("id,slug,name,brand_id,brand:brands(id,slug,name)")
+      .select("id,slug,name,brand_id,brand:brands(id,slug,name),designs(count)")
       .order("name")
       .limit(data.limit);
 
@@ -208,7 +218,15 @@ export const searchModels = createServerFn({ method: "GET" })
     const { data: models, error } = await q;
     if (error) throw error;
 
-    const results = (models ?? []) as unknown as ModelSearchResult[];
+    const results = (models ?? []).map((m: any) => ({
+      id: m.id,
+      slug: m.slug,
+      name: m.name,
+      brand_id: m.brand_id,
+      brand: m.brand,
+      designs_count: m.designs?.[0]?.count ?? 0,
+      thumbnail_path: null as string | null,
+    })) as unknown as ModelSearchResult[];
 
     // Attach thumbnail (most recent image per model)
     if (results.length > 0) {
@@ -521,11 +539,21 @@ export const getModel = createServerFn({ method: "GET" })
     const supabase = getPublicServerClient();
     const { data: row, error } = await supabase
       .from("models")
-      .select("id,slug,name,brand_id,brand:brands(id,slug,name)")
+      .select("id,slug,name,brand_id,brand:brands(id,slug,name),designs(count)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw error;
-    return row as unknown as ModelSearchResult | null;
+    if (!row) return null;
+    const m = row as any;
+    return {
+      id: m.id,
+      slug: m.slug,
+      name: m.name,
+      brand_id: m.brand_id,
+      brand: m.brand,
+      designs_count: m.designs?.[0]?.count ?? 0,
+      thumbnail_path: null,
+    } as ModelSearchResult;
   });
 
 /**
@@ -541,7 +569,7 @@ export const listRecentModelThumbnails = createServerFn({ method: "GET" })
     // Get the most recently uploaded images, deduplicated by model
     const { data: rows, error } = await supabase
       .from("designs")
-      .select("model_id,thumbnail_path,model:models(id,slug,name,brand_id,brand:brands(id,slug,name))")
+      .select("model_id,thumbnail_path,model:models(id,slug,name,brand_id,brand:brands(id,slug,name),designs(count))")
       .not("model_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(data.limit * 3); // over-fetch to account for model dedup
@@ -553,9 +581,15 @@ export const listRecentModelThumbnails = createServerFn({ method: "GET" })
     for (const row of rows ?? []) {
       if (!row.model_id || seen.has(row.model_id)) continue;
       seen.add(row.model_id);
+      const m = row.model as any;
       deduped.push({
-        ...(row.model as any),
+        id: m.id,
+        slug: m.slug,
+        name: m.name,
+        brand_id: m.brand_id,
+        brand: m.brand,
         thumbnail_path: row.thumbnail_path,
+        designs_count: m.designs?.[0]?.count ?? 0,
       });
       if (deduped.length >= data.limit) break;
     }
@@ -575,11 +609,19 @@ export const getModelsByIds = createServerFn({ method: "GET" })
 
     const { data: models, error } = await supabase
       .from("models")
-      .select("id,slug,name,brand_id,brand:brands(id,slug,name)")
+      .select("id,slug,name,brand_id,brand:brands(id,slug,name),designs(count)")
       .in("id", data.ids);
     if (error) throw error;
 
-    const results = (models ?? []) as unknown as ModelSearchResult[];
+    const results = (models ?? []).map((m: any) => ({
+      id: m.id,
+      slug: m.slug,
+      name: m.name,
+      brand_id: m.brand_id,
+      brand: m.brand,
+      designs_count: m.designs?.[0]?.count ?? 0,
+      thumbnail_path: null as string | null,
+    })) as unknown as ModelSearchResult[];
 
     if (results.length > 0) {
       const { data: imgs } = await supabase

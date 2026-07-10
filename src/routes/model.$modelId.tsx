@@ -96,29 +96,36 @@ function ConfiguratorPage() {
   const [loadedFromStorage, setLoadedFromStorage] = useState(false);
   const [interacted, setInteracted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Gallery view mode & columns configuration
-  const [viewMode, setViewMode] = useState<"gallery" | "detail">(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("img")) return "detail";
-    }
-    return "gallery";
-  });
-
-  const [gridCols, setGridCols] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("bck-gallery-cols");
-      if (saved) return Math.max(1, Math.min(6, parseInt(saved, 10)));
-    }
-    return 3;
-  });
+  const [viewMode, setViewMode] = useState<"gallery" | "detail">("gallery");
+  const [gridCols, setGridCols] = useState(3);
 
   const [gridPinchStartDist, setGridPinchStartDist] = useState<number | null>(null);
 
   useEffect(() => {
-    localStorage.setItem("bck-gallery-cols", String(gridCols));
-  }, [gridCols]);
+    setMounted(true);
+
+    const saved = localStorage.getItem("bck-gallery-cols");
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed)) {
+        setGridCols(Math.max(1, Math.min(6, parsed)));
+      }
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("img")) {
+      setViewMode("detail");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem("bck-gallery-cols", String(gridCols));
+    }
+  }, [gridCols, mounted]);
 
   const model = data!.model;
   const categoryMetas = data!.categories;
@@ -207,14 +214,14 @@ function ConfiguratorPage() {
   }, []);
 
   const shareBuildUrl = useMemo(() => {
-    if (typeof window === "undefined") return "";
+    if (!mounted || typeof window === "undefined") return "";
     const base = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
     const selectedIds = Array.from(selectedItems.keys()).join(",");
     const params = new URLSearchParams();
     if (selectedIds) params.set("items", selectedIds);
     params.set("img", String(activeIdx));
     return `${base}?${params.toString()}`;
-  }, [selectedItems, activeIdx]);
+  }, [selectedItems, activeIdx, mounted]);
 
   const share = async () => {
     if (navigator.share) {
@@ -298,11 +305,11 @@ function ConfiguratorPage() {
       const diff = dist - gridPinchStartDist;
       if (Math.abs(diff) > 40) {
         if (diff > 0) {
-          // Pinch Out (Zoom In) -> Increase columns (4 -> 5 -> 6)
-          setGridCols((c) => Math.min(6, c + 1));
-        } else {
-          // Pinch In (Zoom Out) -> Decrease columns (2 -> 1)
+          // Pinch Out (Zoom In) -> Decrease columns to make images larger (e.g. 3 -> 2 -> 1)
           setGridCols((c) => Math.max(1, c - 1));
+        } else {
+          // Pinch In (Zoom Out) -> Increase columns to make images smaller (e.g. 3 -> 4 -> 5 -> 6)
+          setGridCols((c) => Math.min(6, c + 1));
         }
         setGridPinchStartDist(dist);
       }
@@ -332,7 +339,7 @@ function ConfiguratorPage() {
   };
 
   return (
-    <AppShell>
+    <AppShell hideBottomNav={viewMode === "detail"}>
       {viewMode === "gallery" ? (
         <div className="space-y-6">
           {/* Header controls for grid view */}
@@ -351,8 +358,8 @@ function ConfiguratorPage() {
               </div>
             </div>
             
-            {/* Column controller slider */}
-            <div className="flex items-center justify-between sm:justify-end gap-3 bg-surface/30 px-4 py-2 rounded-2xl border border-border/40">
+            {/* Column controller slider (desktop/tablet only) */}
+            <div className="hidden sm:flex items-center justify-end gap-3 bg-surface/30 px-4 py-2 rounded-2xl border border-border/40">
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Columns: {gridCols}
               </span>
@@ -1221,6 +1228,8 @@ function MobileGalleryGrid({
   onTouchMove: (e: React.TouchEvent) => void;
   onTouchEnd: () => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   // Partition images list into rows of size gridCols
   const rows: any[][] = [];
   for (let i = 0; i < images.length; i += gridCols) {
@@ -1244,12 +1253,43 @@ function MobileGalleryGrid({
     return () => observer.disconnect();
   }, [hasMore, loadingMore, loadMore]);
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        onTouchStart(e as any);
+      }
+    };
+
+    const handleMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        onTouchMove(e as any);
+      }
+    };
+
+    const handleEnd = () => {
+      onTouchEnd();
+    };
+
+    el.addEventListener("touchstart", handleStart, { passive: false });
+    el.addEventListener("touchmove", handleMove, { passive: false });
+    el.addEventListener("touchend", handleEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", handleStart);
+      el.removeEventListener("touchmove", handleMove);
+      el.removeEventListener("touchend", handleEnd);
+    };
+  }, [onTouchStart, onTouchMove, onTouchEnd]);
+
   return (
     <div 
+      ref={containerRef}
       className="space-y-2 sm:space-y-3"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
     >
       {rows.map((rowItems, rowIndex) => (
         <VirtualizedRow key={rowIndex} cols={gridCols}>

@@ -13,7 +13,7 @@ const desktopNav = [
   { to: "/favorites", label: "Favorites", icon: Heart },
 ] as const;
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, hideBottomNav }: { children: ReactNode; hideBottomNav?: boolean }) {
   const online = useOnlineStatus();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -81,7 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 md:px-8 md:pb-16">{children}</main>
 
-      <BottomNav />
+      {!hideBottomNav && <BottomNav />}
     </div>
   );
 }

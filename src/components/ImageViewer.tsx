@@ -201,6 +201,46 @@ export function ImageViewer({
   const mediumUrl = activeDetails?.medium_path ? urls[activeDetails.medium_path] : null;
   const originalUrl = activeDetails?.original_path ? urls[activeDetails.original_path] : null;
 
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const handlersRef = useRef({ handleTouchStart, handleTouchMove, handleTouchEnd, scale });
+  
+  useEffect(() => {
+    handlersRef.current = { handleTouchStart, handleTouchMove, handleTouchEnd, scale };
+  });
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const onTouchStartImpl = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+      }
+      handlersRef.current.handleTouchStart(e as any);
+    };
+
+    const onTouchMoveImpl = (e: TouchEvent) => {
+      if (handlersRef.current.scale > 1 || e.touches.length === 2) {
+        e.preventDefault();
+      }
+      handlersRef.current.handleTouchMove(e as any);
+    };
+
+    const onTouchEndImpl = (e: TouchEvent) => {
+      handlersRef.current.handleTouchEnd(e as any);
+    };
+
+    el.addEventListener("touchstart", onTouchStartImpl, { passive: false });
+    el.addEventListener("touchmove", onTouchMoveImpl, { passive: false });
+    el.addEventListener("touchend", onTouchEndImpl, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStartImpl);
+      el.removeEventListener("touchmove", onTouchMoveImpl);
+      el.removeEventListener("touchend", onTouchEndImpl);
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/98 backdrop-blur-xl font-sans select-none">
       {/* Invisible preload images for browser background cache */}
@@ -243,10 +283,8 @@ export function ImageViewer({
 
       {/* Main viewer viewport */}
       <div 
+        ref={viewportRef}
         className="relative flex flex-1 items-center justify-center overflow-hidden px-4 pb-4"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         <div 
           className="relative w-full h-full max-h-full max-w-full flex items-center justify-center transition-transform duration-100 ease-out"

@@ -206,7 +206,12 @@ function ModelCard({ model }: { model: ModelSearchResult }) {
         <div className="p-3">
           <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{(model as any).brand?.name ?? ""}</div>
           <div className="mt-0.5 font-display text-sm font-semibold">{(model as any).name}</div>
-          <div className="mt-1 text-[10px] text-neon uppercase tracking-widest">Configure →</div>
+          <div className="mt-1 flex items-center justify-between gap-2 text-[10px] uppercase tracking-widest">
+            <span className="text-neon font-semibold whitespace-nowrap">Configure →</span>
+            <span className="text-neon/75 font-mono text-[9px] whitespace-nowrap">
+              {model.designs_count ?? 0} Design{model.designs_count !== 1 ? "s" : ""}
+            </span>
+          </div>
         </div>
       </Link>
     </div>

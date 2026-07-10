@@ -52,19 +52,19 @@ export const adminStatus = createServerFn({ method: "GET" }).handler(async () =>
 export const adminLogin = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ pin: z.string().min(4).max(12) }).parse(d))
   .handler(async ({ data }) => {
-    // Rate limit: max 5 login attempts per IP in 15 minutes
+    // Rate limit: max 5 login attempts per IP in 15 minutes (in-memory fast-pass rate limit)
     const ip = getClientIp();
-    if (!rateLimit(`login:${ip}`, 5, 15 * 60 * 1000)) {
-      return { ok: false as const, reason: "Too many attempts. Please wait 15 minutes." };
+    if (!rateLimit(`login:${ip}`, 10, 15 * 60 * 1000)) {
+      return { ok: false as const, reason: "Too many attempts from this IP. Please wait 15 minutes." };
     }
 
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-      // Fetch hashed PIN from admin_settings (only service role client has access)
+      // Fetch hashed PIN and lockout details from admin_settings (only service role client has access)
       const { data: settings, error } = await (supabaseAdmin as any)
         .from("admin_settings")
-        .select("admin_pin_hash")
+        .select("admin_pin_hash, failed_attempts, locked_until")
         .eq("id", "00000000-0000-0000-0000-000000000001")
         .maybeSingle();
 
@@ -76,6 +76,20 @@ export const adminLogin = createServerFn({ method: "POST" })
         console.error("[adminLogin] admin_settings row not found.");
         return { ok: false as const, reason: "Admin settings not configured. Run the migration." };
       }
+
+      // Check lockout status
+      if (settings.locked_until) {
+        const lockedUntil = new Date(settings.locked_until).getTime();
+        const now = Date.now();
+        if (lockedUntil > now) {
+          const waitMinutes = Math.ceil((lockedUntil - now) / 1000 / 60);
+          return {
+            ok: false as const,
+            reason: `Too many failed attempts. Account locked. Please wait ${waitMinutes} minute(s).`
+          };
+        }
+      }
+
       if (!settings.admin_pin_hash || settings.admin_pin_hash.length < 10) {
         console.error("[adminLogin] admin_pin_hash is empty or too short.");
         return { ok: false as const, reason: "Admin PIN not set. Contact the developer." };
@@ -83,7 +97,37 @@ export const adminLogin = createServerFn({ method: "POST" })
 
       // Verify PIN using bcrypt
       const match = await bcrypt.compare(data.pin, settings.admin_pin_hash);
-      if (!match) return { ok: false as const, reason: "Incorrect PIN" };
+      
+      if (!match) {
+        // Increment failed attempts and lock if >= 5
+        const nextFailed = (settings.failed_attempts ?? 0) + 1;
+        let lockedUntil: string | null = null;
+        if (nextFailed >= 5) {
+          lockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins lockout
+        }
+
+        await (supabaseAdmin as any)
+          .from("admin_settings")
+          .update({
+            failed_attempts: nextFailed,
+            locked_until: lockedUntil
+          })
+          .eq("id", "00000000-0000-0000-0000-000000000001");
+
+        if (nextFailed >= 5) {
+          return { ok: false as const, reason: "Too many failed attempts. Account locked for 15 minutes." };
+        }
+        return { ok: false as const, reason: `Incorrect PIN. ${5 - nextFailed} attempt(s) remaining.` };
+      }
+
+      // Reset failed attempts on success
+      await (supabaseAdmin as any)
+        .from("admin_settings")
+        .update({
+          failed_attempts: 0,
+          locked_until: null
+        })
+        .eq("id", "00000000-0000-0000-0000-000000000001");
 
       const { getAdminSession } = await import("./admin-session.server");
       const session = await getAdminSession();
@@ -98,7 +142,9 @@ export const adminLogin = createServerFn({ method: "POST" })
         msg.includes("Incorrect PIN") ||
         msg.includes("Rate limit exceeded") ||
         msg.includes("not configured") ||
-        msg.includes("not set")
+        msg.includes("not set") ||
+        msg.includes("remaining") ||
+        msg.includes("locked")
       ) {
         safeReason = msg;
       } else if (process.env.NODE_ENV !== "production") {
@@ -303,6 +349,44 @@ export const adminReplaceDesignImage = createServerFn({ method: "POST" })
     return row;
   });
 
+function validateImageSignature(bytes: Uint8Array, mimeType: string): boolean {
+  if (bytes.length < 4) return false;
+
+  // JPEG: FF D8 FF
+  if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
+    return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }
+  // PNG: 89 50 4E 47
+  if (mimeType === "image/png") {
+    return bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  }
+  // WebP: RIFF (bytes 0-3) and WEBP (bytes 8-11)
+  if (mimeType === "image/webp") {
+    return (
+      bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && // RIFF
+      bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50  // WEBP
+    );
+  }
+  // GIF: GIF87a or GIF89a
+  if (mimeType === "image/gif") {
+    return (
+      bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && // GIF
+      bytes[3] === 0x38 && (bytes[4] === 0x37 || bytes[4] === 0x39) && bytes[5] === 0x61 // 87a or 89a
+    );
+  }
+  // SVG: Starts with XML header or '<svg'
+  if (mimeType === "image/svg+xml") {
+    try {
+      const decoder = new TextDecoder("utf-8", { fatal: false });
+      const text = decoder.decode(bytes.slice(0, 200)).trim();
+      return text.includes("<?xml") || text.includes("<svg");
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 /** Upload a single image (base64) — returns storage path */
 export const adminUploadImage = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
@@ -317,12 +401,53 @@ export const adminUploadImage = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("./admin-session.server");
     await requireAdmin();
+
+    // 1. Validate MIME type against whitelist
+    const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+    const mime = data.contentType.toLowerCase().trim();
+    if (!allowedMimes.includes(mime)) {
+      throw new Error("Invalid file type. Only JPEG, PNG, WebP, GIF, and SVG images are allowed.");
+    }
+
+    // 2. Decode base64 to binary bytes and check size limit (15MB)
+    let bytes: Uint8Array;
+    try {
+      bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
+    } catch {
+      throw new Error("Invalid base64 payload. Failed to decode image.");
+    }
+
+    const maxBytes = 15 * 1024 * 1024; // 15MB
+    if (bytes.length > maxBytes) {
+      throw new Error("File size is too large. Maximum allowed size is 15MB.");
+    }
+
+    // 3. Verify file signature / magic numbers
+    if (!validateImageSignature(bytes, mime)) {
+      throw new Error("Security verification failed. File contents do not match the expected image signature.");
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
-    const clean = data.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `designs/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${clean}`;
+
+    // 4. Sanitize and generate safe filename to prevent path traversal
+    const extMap: Record<string, string> = {
+      "image/jpeg": ".jpg",
+      "image/jpg": ".jpg",
+      "image/png": ".png",
+      "image/webp": ".webp",
+      "image/gif": ".gif",
+      "image/svg+xml": ".svg"
+    };
+    const safeExt = extMap[mime] || ".jpg";
+    const cleanBase = data.filename
+      .replace(/\.[^/.]+$/, "") // strip existing extension
+      .replace(/[^a-zA-Z0-9_-]/g, "_") // only letters, digits, underscores, hyphens
+      .slice(0, 50); // prevent oversized name headers
+
+    const path = `designs/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${cleanBase}${safeExt}`;
+
     const { error } = await supabaseAdmin.storage.from("catalog").upload(path, bytes, {
-      contentType: data.contentType,
+      contentType: mime,
       upsert: false,
     });
     if (error) throw error;
@@ -562,10 +687,10 @@ export const adminListImages = createServerFn({ method: "GET" })
       if (matchedM) matchingModelIds = matchedM.map((m) => m.id);
     }
 
-    const selectStrAll = "id,title,thumbnail_path,image_paths,original_path,small_path,medium_path,large_path,sort_order,created_at,updated_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name),overrides:image_configuration_overrides(id)";
-    const selectStrNoOverrides = "id,title,thumbnail_path,image_paths,original_path,small_path,medium_path,large_path,sort_order,created_at,updated_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name)";
-    const selectStrSafeAll = "id,title,thumbnail_path,image_paths,sort_order,created_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name),overrides:image_configuration_overrides(id)";
-    const selectStrSafeNoOverrides = "id,title,thumbnail_path,image_paths,sort_order,created_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name)";
+    const selectStrAll = "id,title,thumbnail_path,image_paths,original_path,small_path,medium_path,large_path,sort_order,created_at,updated_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count)),overrides:image_configuration_overrides(id)";
+    const selectStrNoOverrides = "id,title,thumbnail_path,image_paths,original_path,small_path,medium_path,large_path,sort_order,created_at,updated_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count))";
+    const selectStrSafeAll = "id,title,thumbnail_path,image_paths,sort_order,created_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count)),overrides:image_configuration_overrides(id)";
+    const selectStrSafeNoOverrides = "id,title,thumbnail_path,image_paths,sort_order,created_at,brand_id,model_id,description,tags,file_hash,file_size,brand:brands(id,slug,name),model:models(id,slug,name,designs(count))";
 
     const executeQuery = async (columnsStr: string) => {
       let q = supabaseAdmin.from("designs").select(columnsStr, { count: "exact" });

@@ -534,9 +534,9 @@ function UploadTab() {
             <Label>Model *</Label>
             <Select value={modelId} onChange={setModelId} disabled={!brandId}>
               <option value="">Select model…</option>
-              {(models.data ?? []).map((m: ModelRow) => (
+              {(models.data ?? []).map((m: ModelRow & { designs_count?: number }) => (
                 <option key={m.id} value={m.id}>
-                  {m.name}
+                  {m.name} ({m.designs_count ?? 0} design{m.designs_count !== 1 ? "s" : ""})
                 </option>
               ))}
             </Select>
@@ -1437,7 +1437,7 @@ function ItemAssignmentsModal({
                   {brand?.name ?? "Unknown Brand"}
                 </div>
                 <div className="space-y-1">
-                  {models.map((m: ModelRow) => {
+                  {models.map((m: ModelRow & { designs_count?: number }) => {
                     const checked = checkedIds.has(m.id);
                     return (
                       <button
@@ -1459,7 +1459,12 @@ function ItemAssignmentsModal({
                         >
                           {checked && <Check className="h-2.5 w-2.5" />}
                         </span>
-                        <span className="flex-1 font-medium">{m.name}</span>
+                        <span className="flex-1 font-medium flex justify-between items-center pr-2">
+                          <span>{m.name}</span>
+                          <span className="text-[9px] text-muted-foreground font-mono bg-surface-elevated/40 px-2 py-0.5 rounded-full">
+                            {m.designs_count ?? 0} design{(m.designs_count ?? 0) !== 1 ? "s" : ""}
+                          </span>
+                        </span>
                       </button>
                     );
                   })}
@@ -1642,8 +1647,10 @@ function ImagesTab() {
 
     for (const img of rows) {
       const key = img.model_id ?? "__none__";
+      const designsCount = img.model?.designs?.[0]?.count ?? 0;
+      const countSuffix = img.model?.name ? ` (${designsCount} design${designsCount !== 1 ? "s" : ""})` : "";
       const label = img.model?.name
-        ? `${img.brand?.name ?? ""} ${img.model.name}`.trim()
+        ? `${img.brand?.name ?? ""} ${img.model.name}${countSuffix}`.trim()
         : "No model";
       
       const isDuplicateHash = img.file_hash ? (hashCounts[img.file_hash] ?? 0) > 1 : false;
@@ -2076,9 +2083,12 @@ function TaxonomyTab() {
         
         {modelBrandId && (
           <ul className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 max-h-60 overflow-y-auto scrollbar-thin">
-            {(models.data ?? []).map((m: ModelRow) => (
-              <li key={m.id} className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium">
-                {m.name}
+            {(models.data ?? []).map((m: ModelRow & { designs_count?: number }) => (
+              <li key={m.id} className="flex justify-between items-center rounded-full border border-border bg-surface pl-3 pr-2 py-1 text-xs font-medium">
+                <span className="truncate pr-1">{m.name}</span>
+                <span className="shrink-0 text-[9px] text-neon bg-neon/10 px-2 py-0.5 rounded-full font-bold">
+                  {m.designs_count ?? 0}
+                </span>
               </li>
             ))}
           </ul>
