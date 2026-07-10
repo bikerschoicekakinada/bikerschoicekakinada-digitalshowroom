@@ -853,44 +853,70 @@ const PriceBar = memo(function PriceBar({
     <div className="fixed bottom-0 inset-x-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       <div className="mx-auto max-w-7xl px-4 py-3 md:px-8">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
           {/* Total */}
           <button
             type="button"
             onClick={onViewBreakdown}
-            className="flex flex-col items-start"
+            className="flex flex-col items-start shrink-0 text-left"
           >
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              {selectedCount > 0 ? `${selectedCount} selected` : "Select items above"}
+              {selectedCount > 0 ? `${selectedCount} selected` : "Est. Total"}
             </span>
-            <span className="font-display text-xl font-bold neon-text transition-all">
+            <span className="font-display text-base sm:text-xl font-bold neon-text transition-all">
               {total > 0 ? `₹${total.toLocaleString("en-IN")}` : "₹0"}
             </span>
           </button>
 
-          <div className="flex flex-1 justify-end gap-2">
-            {total > 0 && (
-              <button
-                type="button"
-                onClick={onViewBreakdown}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-xs font-semibold uppercase tracking-widest hover:neon-ring"
-              >
-                <ShoppingCart className="h-3.5 w-3.5" /> Breakdown
-              </button>
-            )}
+          {/* Desktop actions layout */}
+          <div className="hidden md:flex flex-1 justify-end gap-2">
+            <button
+              type="button"
+              onClick={onViewBreakdown}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold uppercase tracking-widest hover:neon-ring transition cursor-pointer"
+            >
+              <ShoppingCart className="h-3.5 w-3.5" /> Breakdown
+            </button>
             <a
               href={`https://wa.me/918523876978?text=${whatsappMessage}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-neon px-4 py-2 text-xs font-bold uppercase tracking-widest text-neon-foreground shadow-neon"
+              className="inline-flex items-center gap-1.5 rounded-full bg-neon px-4 py-2 text-xs font-bold uppercase tracking-widest text-neon-foreground shadow-neon hover:opacity-95 transition"
             >
               <MessageCircle className="h-3.5 w-3.5" /> Enquire
             </a>
             <a
               href="tel:+918523876978"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-xs font-semibold uppercase tracking-widest hover:neon-ring"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold uppercase tracking-widest hover:neon-ring transition"
             >
               <Phone className="h-3.5 w-3.5" /> Call
+            </a>
+          </div>
+
+          {/* Mobile actions layout */}
+          <div className="flex md:hidden items-center gap-1.5 flex-1 justify-end">
+            <button
+              type="button"
+              onClick={onViewBreakdown}
+              className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface text-foreground transition active:scale-95 cursor-pointer"
+              title="Breakdown"
+            >
+              <ShoppingCart className="h-4 w-4" />
+            </button>
+            <a
+              href="tel:+918523876978"
+              className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface text-foreground transition active:scale-95"
+              title="Call Business"
+            >
+              <Phone className="h-4 w-4" />
+            </a>
+            <a
+              href={`https://wa.me/918523876978?text=${whatsappMessage}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 h-10 rounded-full bg-neon px-4 text-xs font-bold uppercase tracking-widest text-neon-foreground shadow-neon active:scale-95"
+            >
+              <MessageCircle className="h-4 w-4" /> Enquire
             </a>
           </div>
         </div>
