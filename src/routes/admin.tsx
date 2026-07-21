@@ -632,6 +632,7 @@ function UploadTab() {
                           ? "border-crimson/40 bg-crimson/5"
                           : "border-border bg-surface",
                   )}
+                  title={item.error ? `Error details: ${item.error}` : undefined}
                 >
                   <img
                     src={item.objectUrl}
@@ -672,7 +673,10 @@ function UploadTab() {
                       </span>
                     )}
                     {item.status === "error" && (
-                      <span className="bg-crimson text-white text-[9px] px-1 py-0.5 rounded font-bold">
+                      <span
+                        className="bg-crimson text-white text-[9px] px-1 py-0.5 rounded font-bold cursor-help"
+                        title={item.error || "Unknown upload error"}
+                      >
                         Error
                       </span>
                     )}
